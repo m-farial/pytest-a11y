@@ -1,0 +1,3 @@
+# prefer LF for markdown and text
+* text=auto
+*.md text eol=lf

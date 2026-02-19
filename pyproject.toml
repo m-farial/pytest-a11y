@@ -1,0 +1,144 @@
+[build-system]
+requires = ["poetry-core>=1.5.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ============================================================================
+# [project] section - Standard Python packaging (PEP 621)
+# Used by pytest for entry point discovery
+# ============================================================================
+[project]
+name = "pytest-a11y"
+version = "0.1.0"
+description = "A pytest plugin for automated accessibility testing with axe-core, featuring HTML/JSON reports, violation screenshots, and baseline comparisons."
+authors = [{name = "Farial Mahbub", email = "mahbub.farial@gmail.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["pytest", "plugin", "accessibility", "a11y", "wcag", "axe-core", "testing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Accessibility",
+]
+dependencies = [
+    "pytest>=9.0.2",
+    "selenium>=4.10,<5",
+    "axe-selenium-python>=2.1.6",
+    "pillow>=12.1.0",
+]
+
+[project.urls]
+homepage = "https://github.com/m-farial/pytest-a11y"
+repository = "https://github.com/m-farial/pytest-a11y"
+
+# ============================================================================
+# Entry points for pytest plugin discovery
+# CRITICAL: This is how pytest finds the plugin
+# ============================================================================
+[project.entry-points."pytest11"]
+a11y = "pytest_a11y.plugin"
+a11y_axe = "pytest_a11y.axe.fixtures"
+
+# ============================================================================
+# [tool.poetry] section - Poetry-specific configuration
+# Used by Poetry for dependency management and packaging
+# ============================================================================
+[tool.poetry]
+name = "pytest-a11y"
+version = "0.1.0"
+description = "A pytest plugin for automated accessibility testing with axe-core, featuring HTML/JSON reports, violation screenshots, and baseline comparisons."
+authors = ["Farial Mahbub <mahbub.farial@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/m-farial/pytest-a11y"
+repository = "https://github.com/m-farial/pytest-a11y"
+keywords = ["pytest", "plugin", "accessibility", "a11y", "wcag", "axe-core", "testing"]
+packages = [{ include = "pytest_a11y", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pytest = "^9.0.2"
+selenium = ">=4.10,<5"
+axe-selenium-python = "^2.1.6"
+pillow = "^12.1.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.0"
+mypy = "^1.10.0"
+pytest-xdist = "^3.6.0"
+poethepoet = "^0.40.0"
+
+# ============================================================================
+# Pytest configuration
+# ============================================================================
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+markers = [
+    "integration: Integration tests (all integration tests should be marked with this)",
+    "integration_wiring: Plugin wiring integration tests",
+    "reporting: Tests for report generation",
+    "screenshots: Tests involving screenshot capturing",
+    "overlay: Tests involving visual overlays",
+    "regression: Regression tests comparing against baselines",
+]
+
+# ============================================================================
+# Code formatting and linting configuration
+# ============================================================================
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",
+    "I",
+    "UP",
+    "N",
+    "S",
+    "B",
+    "A",
+    "RUF",
+    "T",   # print() + debugger/breakpoints
+]
+ignore = [
+    "E501",  # Line too long
+    "S101",  # Use of assert detected
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # Allow assert in tests
+
+# ============================================================================
+# Type checking configuration
+# ============================================================================
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+disallow_any_generics = true
+
+# ============================================================================
+# Task runner configuration (Poe the Poet)
+# ============================================================================
+[tool.poe.tasks]
+fmt = "ruff format ."
+lint = "ruff check . --fix"
+lint-check = "ruff check ."
+typecheck = "mypy src"
+check = ["fmt", "lint", "typecheck"]
+
+[tool.poe.tasks.clean]
+cmd = "python scripts/clean.py"
