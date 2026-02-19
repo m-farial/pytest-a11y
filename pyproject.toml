@@ -140,5 +140,3 @@ lint-check = "ruff check ."
 typecheck = "mypy src"
 check = ["fmt", "lint", "typecheck"]
 
-[tool.poe.tasks.clean]
-cmd = "python scripts/clean.py"
