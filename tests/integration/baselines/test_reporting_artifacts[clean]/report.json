@@ -1,0 +1,12 @@
+{
+  "url": "file:///C:/Users/14084/Desktop/pytest-a11y/tests/integration/pages/clean.html",
+  "violations": [],
+  "summary": {
+    "total_violations": 0,
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "timestamp": "2026-02-14T23:59:11.559995Z"
+  }
+}
