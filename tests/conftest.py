@@ -432,13 +432,13 @@ def run_a11y(
 
         generate_a11y_report(
             axe_results=axe_results,
-            page_url=driver.current_url,
+            page_url=url,
             output_path=html_path,
             screenshot_dir=screenshot_dir,
         )
         write_a11y_json_report(
             axe_results=axe_results,
-            page_url=driver.current_url,
+            page_url=url,
             output_path=json_path,
         )
 
