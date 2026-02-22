@@ -65,7 +65,7 @@ jobs:
       - name: Run regression tests on reports (with a11y flag)
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          poetry run pytest tests/ -v -m regression --a11y --tb=short 
+          poetry run pytest tests/ -m regression --a11y -v --tb=short -s 
         env:
           PYTHONPATH: ${{ github.workspace }}/src
 
@@ -84,12 +84,3 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
           include-hidden-files: true
-
-      - name: Upload pytest results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results
-          path: ${{ github.workspace }}/.pytest_cache/
-          retention-days: 7
-          if-no-files-found: ignore
