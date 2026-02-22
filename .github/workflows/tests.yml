@@ -80,10 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: a11y-reports
-          path: |
-            ${{ github.workspace }}/.a11y_reports/**/*.html
-            ${{ github.workspace }}/.a11y_reports/**/*.json
-            ${{ github.workspace }}/.a11y_reports/**/*.png
+          path: .a11y_reports/**
           retention-days: 30
           if-no-files-found: ignore
 
