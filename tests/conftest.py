@@ -406,7 +406,7 @@ def run_a11y(
             logger.warning(
                 "Warning: Report generation failed during test run_a11y helper."
             )
-            pass
+            raise
 
         # Always write deterministic artifact files for the test run so the
         # test can rely on exact, current files rather than racey "latest" files.
@@ -504,7 +504,10 @@ def baseline_artifacts(request: pytest.FixtureRequest):
     test_name = request.node.name
     baseline_dir = Path(__file__).parent / "integration" / "baselines" / test_name
 
-    manager = BaselineManager(baseline_dir)
+    # image_tolerance allows minor pixel differences between OS/rendering environments
+    # 0 = exact match, 1-10 = minor variations (anti-aliasing, font rendering, etc.)
+    # Screenshots captured on different OS (Windows vs Linux) will have small differences
+    manager = BaselineManager(baseline_dir, image_tolerance=10)
 
     def verify_artifacts(artifacts: dict[str, Path]) -> dict:
         """
