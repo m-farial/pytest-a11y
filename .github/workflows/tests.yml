@@ -80,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: a11y-reports
-          path: .a11y_reports/
+          path: ${{ github.workspace }}/.a11y_reports/
           retention-days: 30
           if-no-files-found: ignore
 
@@ -89,6 +89,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pytest-results
-          path: .pytest_cache/
+          path: ${{ github.workspace }}/.pytest_cache/
           retention-days: 7
           if-no-files-found: ignore
