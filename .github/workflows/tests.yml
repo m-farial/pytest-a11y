@@ -69,27 +69,6 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/src
 
-      - name: Debug - print generated HTML report
-        if: always()
-        run: |
-          REPORT=$(find . -name "*.html" -path "*a11y*" | head -1)
-          if [ -n "$REPORT" ]; then
-            echo "Found report: $REPORT"
-            head -80 "$REPORT"
-          else
-            echo "No HTML report found"
-          fi
-
-      - name: Debug - find all generated reports
-        if: always()
-        run: |
-          echo "=== .a11y_reports/ ==="
-          ls -la .a11y_reports/ || echo "Directory does not exist"
-          echo "=== All HTML files ==="
-          find . -name "*.html" -not -path "*/.git/*" || echo "No HTML files found"
-          echo "=== All PNG files ==="
-          find . -name "*.png" -not -path "*/.git/*" || echo "No PNG files found"
-          
       - name: Upload a11y reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -97,12 +76,13 @@ jobs:
           name: a11y-reports
           path: .a11y_reports/
           retention-days: 30
-      
+          if-no-files-found: ignore
+
       - name: Upload pytest results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pytest-results
-          path: |
-            .pytest_cache/
+          path: .pytest_cache/
           retention-days: 7
+          if-no-files-found: ignore
