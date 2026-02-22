@@ -195,7 +195,7 @@ class BaselineManager:
 
             # Compute pixel differences
             diff = ImageChops.difference(baseline_img, current_img)
-            diff_data = list(diff.getdata())
+            diff_data = list(diff.get_flattened_data())
 
             # Count pixels exceeding tolerance
             diff_pixels = sum(
