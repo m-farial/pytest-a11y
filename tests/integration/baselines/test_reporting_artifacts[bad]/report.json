@@ -1,0 +1,197 @@
+{
+  "url": "file:///C:/Users/14084/Desktop/pytest-a11y/tests/integration/pages/bad.html",
+  "violations": [
+    {
+      "id": "aria-allowed-role",
+      "description": "Ensures role attribute has an appropriate value for the element",
+      "impact": "minor",
+      "help": "ARIA role must be appropriate for the element",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/aria-allowed-role?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "label",
+          "html": "<label for=\"password\" role=\"button\">Password</label>",
+          "failure_summary": "Fix any of the following:\n  role button  is not allowed for given element"
+        }
+      ],
+      "tags": [
+        "cat.aria",
+        "best-practice"
+      ],
+      "screenshot_path": "violation_screenshots/minor_aria-allowed-role_1.png"
+    },
+    {
+      "id": "color-contrast",
+      "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds",
+      "impact": "serious",
+      "help": "Elements must have sufficient color contrast",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/color-contrast?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "button",
+          "html": "<button type=\"submit\">Submit</button>",
+          "failure_summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #ffffff, background color: #007bff, font size: 10.0pt, font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "selector": "p",
+          "html": "<p class=\"low-contrast\">Terms and conditions apply to all users of this site.</p>",
+          "failure_summary": "Fix any of the following:\n  Element has insufficient color contrast of 2.84 (foreground color: #999999, background color: #ffffff, font size: 9.0pt, font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "tags": [
+        "cat.color",
+        "wcag2aa",
+        "wcag143"
+      ],
+      "screenshot_path": "violation_screenshots/serious_color-contrast_2.png"
+    },
+    {
+      "id": "heading-order",
+      "description": "Ensures the order of headings is semantically correct",
+      "impact": "moderate",
+      "help": "Heading levels should only increase by one",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/heading-order?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "h3",
+          "html": "<h3>Get In Touch</h3>",
+          "failure_summary": "Fix any of the following:\n  Heading order invalid"
+        }
+      ],
+      "tags": [
+        "cat.semantics",
+        "best-practice"
+      ],
+      "screenshot_path": "violation_screenshots/moderate_heading-order_3.png"
+    },
+    {
+      "id": "image-alt",
+      "description": "Ensures <img> elements have alternate text or a role of none or presentation",
+      "impact": "critical",
+      "help": "Images must have alternate text",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/image-alt?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "img",
+          "html": "<img src=\"banner.jpg\">",
+          "failure_summary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute or the title attribute is empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\""
+        }
+      ],
+      "tags": [
+        "cat.text-alternatives",
+        "wcag2a",
+        "wcag111",
+        "section508",
+        "section508.22.a"
+      ],
+      "screenshot_path": "violation_screenshots/critical_image-alt_4.png"
+    },
+    {
+      "id": "label",
+      "description": "Ensures every form element has a label",
+      "impact": "critical",
+      "help": "Form elements must have labels",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/label?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "input[type=\"text\"]",
+          "html": "<input type=\"text\" placeholder=\"Your Name\">",
+          "failure_summary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty"
+        },
+        {
+          "selector": "input[type=\"email\"]",
+          "html": "<input type=\"email\" placeholder=\"Your Email\">",
+          "failure_summary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty"
+        },
+        {
+          "selector": "textarea",
+          "html": "<textarea rows=\"5\"></textarea>",
+          "failure_summary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty"
+        }
+      ],
+      "tags": [
+        "cat.forms",
+        "wcag2a",
+        "wcag332",
+        "wcag131",
+        "section508",
+        "section508.22.n"
+      ],
+      "screenshot_path": "violation_screenshots/critical_label_5.png"
+    },
+    {
+      "id": "landmark-one-main",
+      "description": "Ensures the page has only one main landmark and each iframe in the page has at most one main landmark",
+      "impact": "moderate",
+      "help": "Page must have one main landmark",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/landmark-one-main?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "html",
+          "html": "<html lang=\"en\">",
+          "failure_summary": "Fix all of the following:\n  Page does not have a main landmark"
+        }
+      ],
+      "tags": [
+        "cat.semantics",
+        "best-practice"
+      ],
+      "screenshot_path": "violation_screenshots/moderate_landmark-one-main_6.png"
+    },
+    {
+      "id": "link-name",
+      "description": "Ensures links have discernible text",
+      "impact": "serious",
+      "help": "Links must have discernible text",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/link-name?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "a[href$=\"privacy\"]",
+          "html": "<a href=\"/privacy\"></a>",
+          "failure_summary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\""
+        },
+        {
+          "selector": "a[href$=\"terms\"]",
+          "html": "<a href=\"/terms\"></a>",
+          "failure_summary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\""
+        }
+      ],
+      "tags": [
+        "cat.name-role-value",
+        "wcag2a",
+        "wcag412",
+        "wcag244",
+        "section508",
+        "section508.22.a"
+      ],
+      "screenshot_path": "violation_screenshots/serious_link-name_7.png"
+    },
+    {
+      "id": "region",
+      "description": "Ensures all page content is contained by landmarks",
+      "impact": "moderate",
+      "help": "All page content must be contained by landmarks",
+      "help_url": "https://dequeuniversity.com/rules/axe/3.1/region?application=axeAPI",
+      "nodes": [
+        {
+          "selector": "html",
+          "html": "<html lang=\"en\">",
+          "failure_summary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+        }
+      ],
+      "tags": [
+        "cat.keyboard",
+        "best-practice"
+      ],
+      "screenshot_path": "violation_screenshots/moderate_region_8.png"
+    }
+  ],
+  "summary": {
+    "total_violations": 8,
+    "critical": 2,
+    "serious": 2,
+    "moderate": 3,
+    "minor": 1,
+    "timestamp": "2026-02-23T04:53:11.180344Z"
+  }
+}
