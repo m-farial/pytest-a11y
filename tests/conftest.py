@@ -110,6 +110,7 @@ def driver() -> Generator[WebDriver, None, None]:
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--window-size=1280,800")
+    options.add_argument("--force-device-scale-factor=1")  # Lock DPR to 1 everywhere, reducing screenshot variability across OSes
     options.add_argument("--disable-gpu")
     drv = webdriver.Chrome(options=options)
     try:
