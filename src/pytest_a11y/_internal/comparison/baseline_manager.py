@@ -8,31 +8,53 @@ from typing import Any
 
 from PIL import Image, ImageChops
 
+# ============================================================================
+# Normalization patterns — edit these if dynamic content changes
+# ============================================================================
+
+# Timestamps: ISO format e.g. "2026-01-24T16:41:21" or with ms/tz "2026-01-24T16:41:21.123Z"
+_RE_TIMESTAMP_ISO = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?"
+)
+
+# Timestamps: human-readable e.g. "2026-01-24 16:41:21"
+_RE_TIMESTAMP_HUMAN = re.compile(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}")
+
+# CI run folder timestamps e.g. "run_20260124_164121"
+_RE_TIMESTAMP_RUN = re.compile(r"run_\d{8}_\d{6}")
+
+# Windows absolute paths e.g. "C:\Users\foo\..." or "C:/Users/foo/..."
+_RE_PATH_WINDOWS = re.compile(r'[a-zA-Z]:[\\\/][^\\"]*')
+
+# Unix absolute paths e.g. "/home/runner/work/..." or "/Users/foo/..."
+_RE_PATH_UNIX = re.compile(r'(?<!["\w])/(?:home|Users|runner|tmp|var|mnt)/[^\s"<]*')
+
+# Generated git hash filenames e.g. "__master__abc123def456"
+_RE_GIT_HASH = re.compile(r"__master__[a-f0-9]{10,}")
+
+# JSON keys to skip entirely during normalization (machine/run specific)
+_SKIP_JSON_KEYS: frozenset[str] = frozenset({"screenshot_path"})
+
 
 def normalize_html_content(html_content: str) -> str:
     """
     Normalize HTML for comparison by removing dynamic content.
 
-    Removes/replaces:
-    - Timestamps (ISO format, dates)
-    - Generated IDs/UUIDs
-    - Version numbers that change
+    Patterns removed (see module-level constants for regex details):
+    - ISO and human-readable timestamps
+    - Windows and Unix absolute file paths
+    - CI run folder timestamps
+    - Generated git hash strings in filenames
     - Whitespace variations
     """
-    # Remove timestamps (ISO format)
-    html_content = re.sub(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "TIMESTAMP", html_content
-    )
+    html_content = _RE_TIMESTAMP_ISO.sub("TIMESTAMP", html_content)
+    html_content = _RE_TIMESTAMP_HUMAN.sub("TIMESTAMP", html_content)
+    html_content = _RE_TIMESTAMP_RUN.sub("run_TIMESTAMP", html_content)
+    html_content = _RE_PATH_WINDOWS.sub("FILEPATH", html_content)
+    html_content = _RE_PATH_UNIX.sub("FILEPATH", html_content)
+    html_content = _RE_GIT_HASH.sub("__master__HASH", html_content)
 
-    # Remove dates like "2026-01-24 16:41:21"
-    html_content = re.sub(
-        r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}", "TIMESTAMP", html_content
-    )
-
-    # Remove generated hash strings in filenames (master__hash patterns)
-    html_content = re.sub(r"__master__[a-f0-9]{10,}", "__master__HASH", html_content)
-
-    # Normalize whitespace (collapse multiple spaces/newlines)
+    # Normalize whitespace
     html_content = re.sub(r"\s+", " ", html_content)
     html_content = re.sub(r">\s+<", "><", html_content)
 
@@ -43,51 +65,40 @@ def normalize_json_content(json_content: str) -> str:
     """
     Normalize JSON for comparison by removing dynamic content.
 
-    Removes/replaces:
-    - Timestamps (ISO format, dates, YYYYMMDD_HHMMSS)
-    - Generated UUIDs/IDs
-    - File paths that change per run/machine
+    Patterns removed (see module-level constants for regex details):
+    - ISO and human-readable timestamps
+    - Windows and Unix absolute file paths
+    - CI run folder timestamps
+    - Keys listed in _SKIP_JSON_KEYS (e.g. screenshot_path)
     """
-    # First, parse as JSON to handle it properly
     try:
         import json as json_module
 
         data = json_module.loads(json_content)
 
-        # Recursively remove dynamic fields
         def clean_dict(obj: Any) -> Any:
             if isinstance(obj, dict):
                 cleaned: dict[str, Any] = {}
                 for k, v in obj.items():
-                    # Skip screenshot_path fields entirely (they're machine/run specific)
-                    if k == "screenshot_path":
+                    if k in _SKIP_JSON_KEYS:
                         continue
                     cleaned[k] = clean_dict(v)
                 return cleaned
             elif isinstance(obj, list):
                 return [clean_dict(item) for item in obj]
             elif isinstance(obj, str):
-                # Normalize timestamps
-                v = re.sub(
-                    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+(?:Z|[+-]\d{2}:\d{2})?",
-                    "TIMESTAMP",
-                    obj,
-                )
-                v = re.sub(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}", "TIMESTAMP", v)
-                # Normalize file paths
-                v = re.sub(r'[a-zA-Z]:[\\\/][^\\"]*', "FILEPATH", v)
-                v = re.sub(r"run_\d{8}_\d{6}", "run_TIMESTAMP", v)
+                v = _RE_TIMESTAMP_ISO.sub("TIMESTAMP", obj)
+                v = _RE_TIMESTAMP_HUMAN.sub("TIMESTAMP", v)
+                v = _RE_TIMESTAMP_RUN.sub("run_TIMESTAMP", v)
+                v = _RE_PATH_WINDOWS.sub("FILEPATH", v)
+                v = _RE_PATH_UNIX.sub("FILEPATH", v)
                 return v
             else:
                 return obj
 
-        # Clean the data
         cleaned_data = clean_dict(data)
-
-        # Re-serialize with sorted keys for consistency
         return json_module.dumps(cleaned_data, sort_keys=True, separators=(",", ":"))
     except json.JSONDecodeError:
-        # If not valid JSON, return as-is
         return json_content
 
 
@@ -184,7 +195,7 @@ class BaselineManager:
 
             # Compute pixel differences
             diff = ImageChops.difference(baseline_img, current_img)
-            diff_data = list(diff.getdata())
+            diff_data = list(diff.get_flattened_data())
 
             # Count pixels exceeding tolerance
             diff_pixels = sum(
@@ -374,7 +385,11 @@ class BaselineManager:
 
         # Get artifact type from existing baseline or default
         artifact_type = self.hashes.get(artifact_name, {}).get("type", "image")
-        # TODO: Delete old baseline file before saving new one
+        # Delete the old baseline file before saving the new one.
+        # This handles the edge case where the file extension has changed
+        # (e.g. .png → .jpg), which would otherwise leave an orphaned file
+        # on disk since shutil.copy2 writes to the new path without cleaning up.
+        self.delete_baseline(artifact_name)
         self.save_baseline(artifact_name, artifact_path, artifact_type)
         new_hash = self.hashes[artifact_name]["hash"]
 

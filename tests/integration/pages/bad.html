@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        input, textarea {
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .footer-links {
+            margin-top: 40px;
+            font-size: 12px;
+        }
+        .low-contrast {
+            color: #999999;
+        }
+    </style>
+</head>
+<body>
+    <h1>Contact Us</h1>
+    <!-- MODERATE: broken heading hierarchy -->
+    <h3>Get In Touch</h3>
+    <!-- MODERATE: missing landmark - Page content not in <main>, <nav>, -->
+    <form>
+        <div class="form-group">
+            <!-- CRITICAL: input with no label -->
+            <input type="text" placeholder="Your Name">
+        </div>
+        
+        <div class="form-group">
+            <!-- CRITICAL: input with no label -->
+            <input type="email" placeholder="Your Email">
+        </div>
+         <!-- MINOR: aria-allowed-role violation - role="button" on <label> is not allowed -->
+        <div class="form-group">
+            <label for="password" role="button">Password</label>
+            <input type="password" id="password" name="password">
+        </div>       
+        <div class="form-group">
+            <!-- CRITICAL: input with no label -->
+            <textarea rows="5"></textarea>
+        </div>
+        <!-- CRITICAL: missing alt text -->
+        <img src="banner.jpg">
+        
+        <button type="submit">Submit</button>
+    </form>
+    <div class="footer-links">
+        <!-- SERIOUS: link with no discernible text -->
+        <p class="low-contrast">Terms and conditions apply to all users of this site.</p>
+        <!-- SERIOUS: link with no discernible text -->
+        <a href="/privacy"></a>
+        <a href="/terms"></a>
+    </div>
+</body>
+</html>
