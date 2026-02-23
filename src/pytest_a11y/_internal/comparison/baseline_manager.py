@@ -385,7 +385,11 @@ class BaselineManager:
 
         # Get artifact type from existing baseline or default
         artifact_type = self.hashes.get(artifact_name, {}).get("type", "image")
-        # TODO: Delete old baseline file before saving new one
+        # Delete the old baseline file before saving the new one.
+        # This handles the edge case where the file extension has changed
+        # (e.g. .png → .jpg), which would otherwise leave an orphaned file
+        # on disk since shutil.copy2 writes to the new path without cleaning up.
+        self.delete_baseline(artifact_name)
         self.save_baseline(artifact_name, artifact_path, artifact_type)
         new_hash = self.hashes[artifact_name]["hash"]
 

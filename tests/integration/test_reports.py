@@ -59,11 +59,18 @@ def test_reporting_artifacts(
     failures: list[str] = []
     for name, result in results.items():
         if result.get("match") is False:
-            failures.append(
-                f"  ✗ {name}\n"
-                f"      Expected: {result.get('baseline_hash')}\n"
-                f"      Got:      {result.get('current_hash')}"
-            )
+            if result.get("comparison_method") == "hash":
+                failures.append(
+                    f"  ✗ {name}\n"
+                    f"      Expected: {result.get('baseline_hash')}\n"
+                    f"      Got:      {result.get('current_hash')}"
+                )
+            if result.get("comparison_method") == "pixel_tolerance":
+                failures.append(
+                    f"  ✗ {name}\n"
+                    f"      Expected: 0 pixels tolerance {result.get('tolerance')}\n"
+                    f"      Got:      {result.get('diff_pixels')} pixels"
+                )
 
     # Build a summary of all results for context (passed + failed)
     passed: list[str] = [
