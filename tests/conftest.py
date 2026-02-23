@@ -98,22 +98,26 @@ class A11yArtifacts:
 
 @pytest.fixture
 def driver() -> Generator[WebDriver, None, None]:
-    """
-    Create a fresh headless Chrome driver for each test.
-
-    Fixed viewport (1280x800) reduces screenshot variability for assertions.
-    Each test gets a new driver instance for better isolation.
-
-    Yields:
-        Selenium WebDriver instance
-    """
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--window-size=1280,800")
-    options.add_argument("--force-device-scale-factor=1")  # Lock DPR to 1 everywhere, reducing screenshot variability across OSes
     options.add_argument("--disable-gpu")
+    options.add_argument("--force-device-scale-factor=1")
+    # Hide scrollbars so they don't consume viewport width on Linux
+    options.add_argument("--hide-scrollbars")
     drv = webdriver.Chrome(options=options)
     try:
+        # Explicitly set the *content* viewport after driver starts,
+        # overriding any OS-level window chrome adjustments
+        drv.execute_cdp_cmd(
+            "Emulation.setDeviceMetricsOverride",
+            {
+                "width": 1280,
+                "height": 800,
+                "deviceScaleFactor": 1,
+                "mobile": False,
+            },
+        )
         yield drv
     finally:
         drv.quit()
