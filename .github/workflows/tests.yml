@@ -1,0 +1,86 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+      
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      
+      - name: Install dependencies with Poetry
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+      
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@latest
+      
+      - name: Set up ChromeDriver
+        uses: nanasess/setup-chromedriver@master
+      
+      - name: Run linting checks
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run ruff check .
+      
+      - name: Run type checking
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run mypy src
+      
+      - name: Run integration tests (with a11y flag)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest tests/ -v -m integration --a11y --tb=short -k "not test_reporting_artifacts"
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+
+      - name: Run regression tests on reports (with a11y flag)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest tests/ -m regression --a11y -v --tb=short -s 
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+
+      - name: Debug - working directory at upload time
+        if: always()
+        run: |
+          echo "Working dir: $(pwd)"
+          ls -la .a11y_reports/ || echo "Not found from $(pwd)"
+
+      - name: Upload a11y reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-reports
+          path: .a11y_reports/**
+          retention-days: 30
+          if-no-files-found: ignore
+          include-hidden-files: true
