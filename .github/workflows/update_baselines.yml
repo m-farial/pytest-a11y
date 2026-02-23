@@ -76,3 +76,11 @@ jobs:
             git commit -m "chore: update baselines [skip ci]"
             git push origin ${{ github.event.inputs.branch }}
           fi
+
+      - name: Retrigger CI on updated branch
+        run: |
+          # Push an empty commit to trigger the test workflow against the new
+          # baseline commit. GitHub does not auto-retrigger CI when a workflow
+          # pushes a commit, so this is required to kick off a fresh test run.
+          git commit --allow-empty -m "ci: retrigger after baseline update"
+          git push origin ${{ github.event.inputs.branch }}
