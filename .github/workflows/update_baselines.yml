@@ -1,0 +1,78 @@
+name: Update Baselines
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to update baselines on"
+        required: true
+        default: "develop"
+
+# Required for the workflow to commit and push baseline changes back to the repo
+permissions:
+  contents: write
+
+jobs:
+  update-baselines:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+          # Fetch full history so git can commit back to the branch
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install dependencies with Poetry
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Set up ChromeDriver
+        uses: nanasess/setup-chromedriver@master
+
+      - name: Update baselines
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest tests/ -m regression --a11y -v --tb=short -s --update-baselines
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+
+      - name: Commit and push updated baselines
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add tests/integration/baselines/
+
+          # Only commit if there are actual changes — avoids empty commits
+          if git diff --staged --quiet; then
+            echo "No baseline changes to commit"
+          else
+            git commit -m "chore: update baselines [skip ci]"
+            git push origin ${{ github.event.inputs.branch }}
+          fi
