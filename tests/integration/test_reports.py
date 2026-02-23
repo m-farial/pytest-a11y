@@ -54,9 +54,25 @@ def test_reporting_artifacts(
 
     # Verify all artifacts match baseline
     results = baseline_artifacts(test_artifacts)
+
+    # Collect all failures first before asserting, so we see the full picture
+    failures: list[str] = []
     for name, result in results.items():
-        assert result.get("match") is not False, (
-            f"{name} does not match baseline for page '{page_key}'\n"
-            f"Expected: {result.get('baseline_hash')}\n"
-            f"Got:      {result.get('current_hash')}"
-        )
+        if result.get("match") is False:
+            failures.append(
+                f"  ✗ {name}\n"
+                f"      Expected: {result.get('baseline_hash')}\n"
+                f"      Got:      {result.get('current_hash')}"
+            )
+
+    # Build a summary of all results for context (passed + failed)
+    passed: list[str] = [
+        name for name, result in results.items() if result.get("match") is True
+    ]
+
+    assert not failures, (
+        f"Baseline comparison failed for page '{page_key}' "
+        f"({len(failures)} failed, {len(passed)} passed)\n\n"
+        f"Passed:\n" + "\n".join(f"  ✓ {name}" for name in passed) + "\n\n"
+        "Failed:\n" + "\n".join(failures)
+    )
