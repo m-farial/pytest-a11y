@@ -25,6 +25,7 @@ poetry.toml
 # =========================
 .coverage
 htmlcov/
+coverage.xml
 
 # =========================
 # Build artifacts
