@@ -385,9 +385,9 @@ class TestDeleteAndSaveBaseline:
         [
             ("report.html", "image", "html"),
             ("report.json", "image", "json"),
-            ("report.txt", "image", "text"),
             ("image.png", "image", "image"),
-            ("report.txt", "text", "text"),
+            ("image.jpg", "image", "image"),
+            ("report.txt", "image", "text"),
         ],
     )
     def test_save_baseline_infers_or_preserves_type_from_inputs(
@@ -406,6 +406,43 @@ class TestDeleteAndSaveBaseline:
 
         assert manager.hashes[artifact_name]["type"] == expected_type
         assert (manager.baseline_dir / artifact_name).exists()
+
+    def test_save_baseline_infers_text_type_and_uses_expected_baseline_path(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Infer text type for .txt input passed as image and copy to the computed baseline path."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / "report.txt"
+        source.write_text("content", encoding="utf-8")
+        expected_baseline_path = manager.baseline_dir / "report.txt"
+
+        with (
+            patch.object(
+                manager, "_compute_file_hash", return_value="hash123"
+            ) as mock_hash,
+            patch.object(baseline_module.shutil, "copy2") as mock_copy,
+        ):
+            manager.save_baseline("report.txt", source, "image")
+
+        mock_hash.assert_called_once_with(source, normalize=False)
+        mock_copy.assert_called_once_with(source, expected_baseline_path)
+        assert manager.hashes["report.txt"]["type"] == "text"
+
+    def test_save_baseline_does_not_change_type_for_unrecognized_suffix(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Verify the save_baseline suffix branch is exercised when the suffix is not recognized."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / "style.css"
+        source.write_text("body {}", encoding="utf-8")
+
+        manager.save_baseline("style.css", source, "image")
+
+        # The suffix is unrecognized, so artifact_type should not be rewritten
+        assert manager.hashes["style.css"]["type"] == "image"
+        assert (manager.baseline_dir / "style.css").exists()
 
 
 class TestCompareArtifact:

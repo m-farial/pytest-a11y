@@ -45,13 +45,11 @@ class TestAxeFixture:
                 raise ImportError("simulated failure")
             return original_import(name, _globals, _locals, fromlist, level)
 
-        import pytest_a11y.axe
-
-        importlib.reload(pytest_a11y.axe)
+        importlib.reload(importlib.import_module("pytest_a11y.axe"))
 
         try:
             builtins.__import__ = failing_import  # type: ignore[assignment]
             with pytest.raises(ImportError):
-                importlib.reload(pytest_a11y.axe)
+                importlib.reload(importlib.import_module("pytest_a11y.axe"))
         finally:
             builtins.__import__ = original_import

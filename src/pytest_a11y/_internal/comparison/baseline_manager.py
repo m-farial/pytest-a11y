@@ -241,14 +241,15 @@ class BaselineManager:
         """
         artifact_path = Path(artifact_path)
         suffix = artifact_path.suffix.lower()
-        if artifact_type == "image" and suffix in [".html", ".json", ".txt"]:
-            # Each suffix is handled separately to make branch coverage feasible.
-            if suffix == ".html":
-                artifact_type = "html"
-            if suffix == ".json":
-                artifact_type = "json"
-            if suffix == ".txt":
-                artifact_type = "text"
+        suffix = artifact_path.suffix.lower()
+        if suffix == ".png" or suffix == ".jpg":
+            artifact_type = "image"
+        elif suffix == ".html":
+            artifact_type = "html"
+        elif suffix == ".json":
+            artifact_type = "json"
+        elif suffix == ".txt":
+            artifact_type = "text"
 
         baseline_path = self.baseline_dir / artifact_name
         baseline_path.parent.mkdir(parents=True, exist_ok=True)
