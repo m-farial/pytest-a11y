@@ -62,7 +62,7 @@ from pytest_a11y.assertions import (
 # Users access this via:
 #   def test_example(axe: AxeRunnerProtocol):  # <-- pytest fixture
 #       results = axe.run()
-from pytest_a11y.axe.fixtures import axe
+from pytest_a11y.axe.fixtures import axe as axe_fixture
 
 # ============================================================================
 # Public Baseline Exports
@@ -105,7 +105,7 @@ __all__ = [
     # Baseline management
     "BaselineManager",
     # Fixtures (available via pytest automatically)
-    "axe",
+    "axe_fixture",
 ]
 
 __version__ = "0.1.0"

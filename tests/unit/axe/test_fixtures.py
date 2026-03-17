@@ -1,29 +1,55 @@
 from __future__ import annotations
 
+import builtins
+import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
-
-from pytest_a11y.axe import fixtures
-from pytest_a11y.axe.fixtures import axe
 
 
 class TestAxeFixture:
     """Tests for the axe pytest fixture."""
 
-    @patch.object(fixtures, "AxeRunner")
     def test_axe_returns_runner_bound_to_driver_and_request(
         self,
-        mock_axe_runner: MagicMock,
+        mock_driver: MagicMock,
+        mock_request: MagicMock,
     ) -> None:
         """Return an AxeRunner created with the active driver and pytest request."""
-        driver = MagicMock(spec=WebDriver)
-        request = MagicMock(spec=pytest.FixtureRequest)
+        # Import and resolve the fixture at runtime so coverage measures the
+        # fixture module import and fixture body execution.
+        import pytest_a11y.conftest  # noqa: F401 - ensure conftest fixture discovery code runs under coverage
+
+        fixtures_module = importlib.reload(
+            importlib.import_module("pytest_a11y.axe.fixtures")
+        )
+        axe = fixtures_module.axe
+
         expected_runner = MagicMock()
-        mock_axe_runner.return_value = expected_runner
+        with patch.object(fixtures_module, "AxeRunner") as mock_axe_runner:
+            mock_axe_runner.return_value = expected_runner
 
-        result = axe.__wrapped__(driver, request)
+            result = axe.__wrapped__(mock_driver, mock_request)
 
-        assert result is expected_runner
-        mock_axe_runner.assert_called_once_with(driver, request=request)
+            assert result is expected_runner
+            mock_axe_runner.assert_called_once_with(mock_driver, request=mock_request)
+
+    def test_axe_package_import_branch_covered_by_import_error(self) -> None:
+        """Cover the import error branch in pytest_a11y.axe package."""
+        original_import = builtins.__import__
+
+        def failing_import(name: str, globals=None, locals=None, fromlist=(), level=0):
+            if name == "pytest_a11y.axe.fixtures":
+                raise ImportError("simulated failure")
+            return original_import(name, globals, locals, fromlist, level)
+
+        import pytest_a11y.axe
+
+        importlib.reload(pytest_a11y.axe)
+
+        try:
+            builtins.__import__ = failing_import  # type: ignore[assignment]
+            with pytest.raises(ImportError):
+                importlib.reload(pytest_a11y.axe)
+        finally:
+            builtins.__import__ = original_import

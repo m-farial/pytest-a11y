@@ -569,6 +569,30 @@ class TestRawAssertions:
 
         mock_generate.assert_called_once()
 
+    def test_assert_no_critical_violations_skips_report_generation_when_driver_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Skip report generation when the driver fixture cannot be resolved."""
+
+        class RequestWithoutDriver:
+            """Request double that raises on fixture lookup."""
+
+            def getfixturevalue(self, name: str) -> Any:
+                raise pytest.FixtureLookupError(name, None)
+
+        monkeypatch.setattr(
+            assertions_module.pytest,
+            "current_request",
+            RequestWithoutDriver(),
+            raising=False,
+        )
+
+        with patch.object(assertions_module, "_generate_reports") as mock_generate:
+            assert_no_critical_violations({"violations": []})
+
+        mock_generate.assert_not_called()
+
     def test_assert_no_critical_violations_raises_on_critical(self) -> None:
         """Raise only for critical violations."""
         with pytest.raises(AssertionError, match=r"b \(2 nodes\)"):

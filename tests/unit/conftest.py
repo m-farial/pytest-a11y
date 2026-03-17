@@ -7,9 +7,10 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from PIL import Image
 
 from pytest_a11y.axe._runner import AxeRunner
-from pytest_a11y.types import Results, Violation
+from pytest_a11y.types import Node, Results, Violation
 
 
 class DummyConfig:
@@ -72,6 +73,7 @@ def mock_driver() -> MagicMock:
     """Return a mock Selenium WebDriver."""
     driver = MagicMock()
     driver.current_url = "https://example.com"
+    driver.save_screenshot.return_value = True
     return driver
 
 
@@ -220,6 +222,38 @@ def dummy_driver() -> DummyDriver:
 
 
 @pytest.fixture
+def processed_violation() -> Violation:
+    """Return a processed violation with one node and a screenshot path."""
+    return Violation(
+        id="color-contrast",
+        description="Insufficient color contrast",
+        impact="serious",
+        help="Fix contrast",
+        help_url="https://example.com/help/color-contrast",
+        nodes=[
+            Node(
+                selector="#login-button",
+                html='<button id="login-button">Login</button>',
+                failure_summary="Element has insufficient contrast",
+                impact="serious",
+            )
+        ],
+        tags=["wcag2aa", "cat.color"],
+        screenshot_path="violation_screenshots/serious_color-contrast_1.png",
+    )
+
+
+@pytest.fixture
+def processed_results(processed_violation: Violation) -> Results:
+    """Return processed results with one violation."""
+    return Results(
+        url="https://example.com",
+        timestamp="2026-03-20T12:00:00",
+        violations=[processed_violation],
+    )
+
+
+@pytest.fixture
 def processed_results_no_violations() -> Results:
     """Return processed results with no violations."""
     return Results(url="https://example.com", timestamp="now", violations=[])
@@ -259,3 +293,64 @@ def processed_results_with_critical() -> Results:
             )
         ],
     )
+
+
+@pytest.fixture
+def sample_text_file(tmp_path: Path) -> Path:
+    """Create a simple text file for baseline tests."""
+    path = tmp_path / "sample.txt"
+    path.write_text("hello world", encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def sample_html_file(tmp_path: Path) -> Path:
+    """Create an HTML file containing dynamic-looking values."""
+    path = tmp_path / "report.html"
+    path.write_text(
+        """
+        <html>
+          <body>
+            Generated at 2026-03-20T12:00:00
+            C:\\Users\\me\\project\\file.html
+          </body>
+        </html>
+        """,
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.fixture
+def sample_json_file(tmp_path: Path) -> Path:
+    """Create a JSON file containing dynamic-looking values."""
+    path = tmp_path / "report.json"
+    path.write_text(
+        """
+        {
+          "timestamp": "2026-03-20T12:00:00",
+          "run": "run_20260320_120000",
+          "path": "/tmp/project/file.json"
+        }
+        """,
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.fixture
+def red_png(tmp_path: Path) -> Path:
+    """Create a small red PNG image."""
+    path = tmp_path / "red.png"
+    Image.new("RGB", (4, 4), (255, 0, 0)).save(path)
+    return path
+
+
+@pytest.fixture
+def slightly_different_red_png(tmp_path: Path) -> Path:
+    """Create a slightly different red PNG image."""
+    path = tmp_path / "red2.png"
+    image = Image.new("RGB", (4, 4), (255, 0, 0))
+    image.putpixel((0, 0), (250, 0, 0))
+    image.save(path)
+    return path

@@ -141,7 +141,7 @@ lint = "ruff check . --fix"
 lint-check = "ruff check ."
 typecheck = "mypy src"
 check = ["fmt", "lint", "typecheck"]
-coverage = "pytest --cov=pytest_a11y --cov-branch --cov-report=term-missing --no-cov-on-fail --cov-report=xml --cache-clear tests/unit -q"
+coverage = "pytest --cov=pytest_a11y --cov-branch --cov-report=term-missing --cov-report=xml --cache-clear tests/unit -q"
 
 [tool.coverage.run]
 branch = true
