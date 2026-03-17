@@ -38,10 +38,12 @@ class TestAxeFixture:
         """Cover the import error branch in pytest_a11y.axe package."""
         original_import = builtins.__import__
 
-        def failing_import(name: str, globals=None, locals=None, fromlist=(), level=0):
+        def failing_import(
+            name: str, _globals=None, _locals=None, fromlist=(), level=0
+        ):
             if name == "pytest_a11y.axe.fixtures":
                 raise ImportError("simulated failure")
-            return original_import(name, globals, locals, fromlist, level)
+            return original_import(name, _globals, _locals, fromlist, level)
 
         import pytest_a11y.axe
 
