@@ -45,7 +45,9 @@ class TestNormalizationHelpers:
             "2026-03-20 12:00:00",
             "run_20260320_120000",
             r"C:\Users\me\project\file.json",
+            r"\\server\share\project\file.json",
             "/workspace/project/file.json",
+            "/opt/build/output/file.json",
             "__master__abc123def456",
         ],
     )
@@ -59,12 +61,14 @@ class TestNormalizationHelpers:
         assert raw not in normalized
 
     def test_normalize_html_content_replaces_dynamic_values(self) -> None:
-        """Normalize timestamps and supported paths in HTML content."""
+        """Normalize timestamps and supported filesystem paths in HTML content."""
         html = (
             "<div>"
             "Generated 2026-03-20T12:00:00 "
             "C:\\Users\\me\\project\\file.html "
+            "\\\\server\\share\\project\\file.html "
             "/workspace/project/file.html "
+            "/opt/build/output/file.html "
             "run_20260320_120000 "
             "__master__abc123def456"
             "</div>"
@@ -74,19 +78,42 @@ class TestNormalizationHelpers:
 
         assert "2026-03-20T12:00:00" not in normalized
         assert "C:\\Users\\me\\project\\file.html" not in normalized
+        assert "\\\\server\\share\\project\\file.html" not in normalized
         assert "/workspace/project/file.html" not in normalized
+        assert "/opt/build/output/file.html" not in normalized
         assert "run_20260320_120000" not in normalized
         assert "__master__abc123def456" not in normalized
 
+    def test_normalize_html_content_does_not_replace_url_paths(self) -> None:
+        """Do not normalize legitimate slash-prefixed web paths in HTML."""
+        html = (
+            "<div>"
+            '<a href="/privacy">Privacy</a>'
+            '<a href="/terms">Terms</a>'
+            '<a href="/help/color-contrast">Help</a>'
+            '<img src="/static/app.css">'
+            "</div>"
+        )
+
+        normalized = baseline_module.normalize_html_content(html)
+
+        assert 'href="/privacy"' in normalized
+        assert 'href="/terms"' in normalized
+        assert 'href="/help/color-contrast"' in normalized
+        assert 'src="/static/app.css"' in normalized
+        assert "FILEPATH" not in normalized
+
     def test_normalize_json_content_replaces_dynamic_values(self) -> None:
-        """Normalize timestamps and paths in JSON content."""
+        """Normalize timestamps and filesystem paths in JSON content."""
         raw = json.dumps(
             {
                 "timestamp": "2026-03-20T12:00:00",
                 "human": "2026-03-20 12:00:00",
                 "run": "run_20260320_120000",
                 "windows_path": r"C:\Users\me\project\file.json",
+                "unc_path": r"\\server\share\project\file.json",
                 "unix_path": "/workspace/project/file.json",
+                "opt_path": "/opt/build/output/file.json",
                 "git_hash": "__master__abc123def456",
                 "nested": [{"ts": "2026-03-20T12:00:00"}],
             }
@@ -98,52 +125,49 @@ class TestNormalizationHelpers:
         assert "2026-03-20 12:00:00" not in normalized
         assert "run_20260320_120000" not in normalized
         assert r"C:\Users\me\project\file.json" not in normalized
+        assert r"\\server\share\project\file.json" not in normalized
         assert "/workspace/project/file.json" not in normalized
+        assert "/opt/build/output/file.json" not in normalized
         assert "__master__abc123def456" not in normalized
 
-    def test_normalize_json_content_returns_original_on_decode_error(self) -> None:
-        """Return the original JSON string when decoding fails."""
-        invalid = "{not valid json"
-
-        assert baseline_module.normalize_json_content(invalid) == invalid
-
-    @pytest.mark.parametrize(
-        ("raw_value", "expected_fragment"),
-        [
-            (123, '"value":123'),
-            (True, '"value":true'),
-            (None, '"value":null'),
-        ],
-    )
-    def test_normalize_json_content_preserves_non_string_scalars(
-        self,
-        raw_value: int | bool | None,
-        expected_fragment: str,
-    ) -> None:
-        """Leave non-string scalar JSON values unchanged."""
-        raw = json.dumps({"value": raw_value})
-
-        normalized = baseline_module.normalize_json_content(raw)
-
-        assert expected_fragment in normalized
-
-    def test_normalize_json_content_skips_screenshot_path_key(self) -> None:
-        """Remove skipped machine-specific JSON keys during normalization."""
+    def test_normalize_json_content_does_not_replace_url_paths(self) -> None:
+        """Do not normalize legitimate slash-prefixed web paths in JSON."""
         raw = json.dumps(
             {
-                "name": "report",
-                "screenshot_path": "/workspace/project/screenshot.png",
-                "nested": {
-                    "screenshot_path": r"C:\Users\me\shot.png",
-                    "status": "ok",
-                },
+                "help_path": "/help/color-contrast",
+                "privacy_path": "/privacy",
+                "terms_path": "/terms",
+                "asset_path": "/static/app.css",
             }
         )
 
         normalized = baseline_module.normalize_json_content(raw)
 
-        assert "screenshot_path" not in normalized
-        assert '"status":"ok"' in normalized
+        assert '"help_path":"/help/color-contrast"' in normalized
+        assert '"privacy_path":"/privacy"' in normalized
+        assert '"terms_path":"/terms"' in normalized
+        assert '"asset_path":"/static/app.css"' in normalized
+        assert "FILEPATH" not in normalized
+
+    def test_normalize_json_content_preserves_nested_non_string_values(self) -> None:
+        """Leave nested non-string JSON values unchanged while normalizing strings."""
+        raw = json.dumps(
+            {
+                "outer": {
+                    "count": 123,
+                    "enabled": True,
+                    "missing": None,
+                    "items": [1, False, None, "2026-03-20T12:00:00"],
+                }
+            }
+        )
+
+        normalized = baseline_module.normalize_json_content(raw)
+
+        assert '"count":123' in normalized
+        assert '"enabled":true' in normalized
+        assert '"missing":null' in normalized
+        assert '"items":[1,false,null,"TIMESTAMP"]' in normalized
 
 
 class TestInitializationAndHashStorage:

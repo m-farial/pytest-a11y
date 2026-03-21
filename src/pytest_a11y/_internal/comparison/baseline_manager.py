@@ -26,9 +26,18 @@ _RE_TIMESTAMP_RUN = re.compile(r"run_\d{8}_\d{6}")
 # Windows absolute paths e.g. "C:\Users\foo\..." or "C:/Users/foo/..."
 _RE_PATH_WINDOWS = re.compile(r'[a-zA-Z]:[\\\/][^\\"]*')
 
-# Generic Unix absolute paths e.g. "/home/runner/work/...", "/workspace/...", "/opt/build/..."
-_RE_PATH_UNIX = re.compile(r'(?<![:\w])/(?:[^/\s"<]+/)*[^/\s"<]+')
+# Windows UNC paths e.g. "\\server\share\folder\file.json"
+_RE_PATH_WINDOWS_UNC = re.compile(
+    r'(?<!\w)\\\\[^\\/\s"<]+\\[^\\/\s"<]+(?:\\[^\\/\s"<]+)*'
+)
 
+# Unix absolute filesystem paths under known runtime/build roots only.
+# Intentionally restricted to an allowlist to avoid false positives for
+# legitimate slash-prefixed web paths in HTML/JSON such as "/privacy",
+# "/terms", or "/help/color-contrast".
+_RE_PATH_UNIX = re.compile(
+    r'(?<![:\w])/(?:home|Users|tmp|var|workspace|opt|root)(?:/[^/\s"<]+){1,}'
+)
 # Generated git hash filenames e.g. "__master__abc123def456"
 _RE_GIT_HASH = re.compile(r"__master__[a-f0-9]{10,}")
 
@@ -40,6 +49,7 @@ _STRING_NORMALIZERS: tuple[tuple[re.Pattern[str], str], ...] = (
     (_RE_TIMESTAMP_HUMAN, "TIMESTAMP"),
     (_RE_TIMESTAMP_RUN, "run_TIMESTAMP"),
     (_RE_PATH_WINDOWS, "FILEPATH"),
+    (_RE_PATH_WINDOWS_UNC, "FILEPATH"),
     (_RE_PATH_UNIX, "FILEPATH"),
     (_RE_GIT_HASH, "__master__HASH"),
 )
