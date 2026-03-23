@@ -1,0 +1,46 @@
+version: 2
+updates:
+  # Keep Python dependencies up to date
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "03:00"
+    groups:
+      development:
+        patterns:
+          - "pytest-xdist"
+          - "poethepoet"
+      production:
+        patterns:
+          - "axe-selenium-python"
+          - "pillow"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "m-farial"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "[Update]"
+      include: "scope"
+    # Only allow Dependabot to open PRs for direct (top-level) dependencies
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      - dependency-name: "urllib3"
+      - dependency-name: "typer"
+      - dependency-name: "safety-schemas"
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    target-branch: main
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"  # Update all GitHub Actions

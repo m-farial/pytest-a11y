@@ -7,6 +7,35 @@ on:
     branches: [main, develop]
 
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+      - name: Install dependencies with Poetry (including dev)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install --with dev
+      - name: Run unit tests with coverage
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run poe coverage
   integration-tests:
     runs-on: ubuntu-latest
     

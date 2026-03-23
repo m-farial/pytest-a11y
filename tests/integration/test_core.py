@@ -119,15 +119,12 @@ def test_axe_injection_error_handling(
     request.config.option.a11y_reports = tmp_path
     driver.get(pages["bad"])
 
-    # Mock a failure in axe execution
-    import importlib
-
-    runner_mod = importlib.import_module("pytest_a11y.axe._runner")
-
-    def injection_failure(self: object) -> NoReturn:
+    def injection_failure(*args: object, **kwargs: object) -> NoReturn:
         raise RuntimeError("Simulated axe injection failure")
 
-    monkeypatch.setattr(runner_mod.AxeRunner, "run", injection_failure, raising=True)
+    # Patch the instantiated runner directly to ensure the failure is raised
+    # regardless of any caching or class-level indirection.
+    monkeypatch.setattr(axe, "run", injection_failure, raising=True)
 
     # Verify the error is raised with clear message (axe fixture uses AxeRunner)
     with pytest.raises(RuntimeError, match="Simulated axe injection failure"):

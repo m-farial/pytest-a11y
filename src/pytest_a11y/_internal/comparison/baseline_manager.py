@@ -26,14 +26,41 @@ _RE_TIMESTAMP_RUN = re.compile(r"run_\d{8}_\d{6}")
 # Windows absolute paths e.g. "C:\Users\foo\..." or "C:/Users/foo/..."
 _RE_PATH_WINDOWS = re.compile(r'[a-zA-Z]:[\\\/][^\\"]*')
 
-# Unix absolute paths e.g. "/home/runner/work/..." or "/Users/foo/..."
-_RE_PATH_UNIX = re.compile(r'(?<!["\w])/(?:home|Users|runner|tmp|var|mnt)/[^\s"<]*')
+# Windows UNC paths e.g. "\\server\share\folder\file.json"
+_RE_PATH_WINDOWS_UNC = re.compile(
+    r'(?<!\w)\\\\[^\\/\s"<]+\\[^\\/\s"<]+(?:\\[^\\/\s"<]+)*'
+)
 
+# Unix absolute filesystem paths under known runtime/build roots only.
+# Intentionally restricted to an allowlist to avoid false positives for
+# legitimate slash-prefixed web paths in HTML/JSON such as "/privacy",
+# "/terms", or "/help/color-contrast".
+_RE_PATH_UNIX = re.compile(
+    r'(?<![:\w])/(?:home|Users|tmp|var|workspace|opt|root)(?:/[^/\s"<]+){1,}'
+)
 # Generated git hash filenames e.g. "__master__abc123def456"
 _RE_GIT_HASH = re.compile(r"__master__[a-f0-9]{10,}")
 
 # JSON keys to skip entirely during normalization (machine/run specific)
 _SKIP_JSON_KEYS: frozenset[str] = frozenset({"screenshot_path"})
+
+_STRING_NORMALIZERS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (_RE_TIMESTAMP_ISO, "TIMESTAMP"),
+    (_RE_TIMESTAMP_HUMAN, "TIMESTAMP"),
+    (_RE_TIMESTAMP_RUN, "run_TIMESTAMP"),
+    (_RE_PATH_WINDOWS, "FILEPATH"),
+    (_RE_PATH_WINDOWS_UNC, "FILEPATH"),
+    (_RE_PATH_UNIX, "FILEPATH"),
+    (_RE_GIT_HASH, "__master__HASH"),
+)
+
+
+def _normalize_dynamic_text(value: str) -> str:
+    """Replace dynamic machine- and run-specific text with stable placeholders."""
+    normalized = value
+    for pattern, replacement in _STRING_NORMALIZERS:
+        normalized = pattern.sub(replacement, normalized)
+    return normalized
 
 
 def normalize_html_content(html_content: str) -> str:
@@ -47,12 +74,7 @@ def normalize_html_content(html_content: str) -> str:
     - Generated git hash strings in filenames
     - Whitespace variations
     """
-    html_content = _RE_TIMESTAMP_ISO.sub("TIMESTAMP", html_content)
-    html_content = _RE_TIMESTAMP_HUMAN.sub("TIMESTAMP", html_content)
-    html_content = _RE_TIMESTAMP_RUN.sub("run_TIMESTAMP", html_content)
-    html_content = _RE_PATH_WINDOWS.sub("FILEPATH", html_content)
-    html_content = _RE_PATH_UNIX.sub("FILEPATH", html_content)
-    html_content = _RE_GIT_HASH.sub("__master__HASH", html_content)
+    html_content = _normalize_dynamic_text(html_content)
 
     # Normalize whitespace
     html_content = re.sub(r"\s+", " ", html_content)
@@ -72,32 +94,24 @@ def normalize_json_content(json_content: str) -> str:
     - Keys listed in _SKIP_JSON_KEYS (e.g. screenshot_path)
     """
     try:
-        import json as json_module
+        data = json.loads(json_content)
 
-        data = json_module.loads(json_content)
-
-        def clean_dict(obj: Any) -> Any:
+        def clean_value(obj: Any) -> Any:
+            """Recursively normalize JSON-safe values."""
             if isinstance(obj, dict):
-                cleaned: dict[str, Any] = {}
-                for k, v in obj.items():
-                    if k in _SKIP_JSON_KEYS:
-                        continue
-                    cleaned[k] = clean_dict(v)
-                return cleaned
-            elif isinstance(obj, list):
-                return [clean_dict(item) for item in obj]
-            elif isinstance(obj, str):
-                v = _RE_TIMESTAMP_ISO.sub("TIMESTAMP", obj)
-                v = _RE_TIMESTAMP_HUMAN.sub("TIMESTAMP", v)
-                v = _RE_TIMESTAMP_RUN.sub("run_TIMESTAMP", v)
-                v = _RE_PATH_WINDOWS.sub("FILEPATH", v)
-                v = _RE_PATH_UNIX.sub("FILEPATH", v)
-                return v
-            else:
-                return obj
+                return {
+                    key: clean_value(value)
+                    for key, value in obj.items()
+                    if key not in _SKIP_JSON_KEYS
+                }
+            if isinstance(obj, list):
+                return [clean_value(item) for item in obj]
+            if isinstance(obj, str):
+                return _normalize_dynamic_text(obj)
+            return obj
 
-        cleaned_data = clean_dict(data)
-        return json_module.dumps(cleaned_data, sort_keys=True, separators=(",", ":"))
+        cleaned_data = clean_value(data)
+        return json.dumps(cleaned_data, sort_keys=True, separators=(",", ":"))
     except json.JSONDecodeError:
         return json_content
 
@@ -150,20 +164,17 @@ class BaselineManager:
         suffix = file_path.suffix.lower()
 
         if normalize and suffix == ".html":
-            # Read and normalize HTML
             with open(file_path, encoding="utf-8") as f:
                 html_content = f.read()
             normalized = normalize_html_content(html_content)
             return hashlib.sha256(normalized.encode()).hexdigest()
 
         if normalize and suffix == ".json":
-            # Read and normalize JSON
             with open(file_path, encoding="utf-8") as f:
                 json_content = f.read()
             normalized = normalize_json_content(json_content)
             return hashlib.sha256(normalized.encode()).hexdigest()
 
-        # Normal file hash (for images, etc.)
         sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
@@ -187,17 +198,14 @@ class BaselineManager:
             baseline_img = Image.open(baseline_path).convert("RGB")
             current_img = Image.open(current_path).convert("RGB")
 
-            # Resize current to match baseline if needed
             if baseline_img.size != current_img.size:
                 current_img = current_img.resize(
                     baseline_img.size, Image.Resampling.LANCZOS
                 )
 
-            # Compute pixel differences
             diff = ImageChops.difference(baseline_img, current_img)
             diff_data = list(diff.get_flattened_data())
 
-            # Count pixels exceeding tolerance
             diff_pixels = sum(
                 1
                 for pixel in diff_data
@@ -205,13 +213,11 @@ class BaselineManager:
             )
             total_pixels = len(diff_data)
 
-            # Consider match if diff is under 1% (configurable via tolerance)
             threshold = total_pixels * 0.01
             match = diff_pixels < threshold
 
             return match, diff_pixels, total_pixels
         except Exception:
-            # If comparison fails, fall back to hash comparison
             return False, -1, -1
 
     def delete_baseline(self, artifact_name: str) -> None:
@@ -233,7 +239,7 @@ class BaselineManager:
         self,
         artifact_name: str,
         artifact_path: Path | str,
-        artifact_type: str = "image",
+        artifact_type: str | None = None,
     ) -> None:
         """
         Save artifact to baseline and compute hash.
@@ -245,22 +251,27 @@ class BaselineManager:
         """
         artifact_path = Path(artifact_path)
         suffix = artifact_path.suffix.lower()
-        if artifact_type == "image" and suffix in [".html", ".json", ".txt"]:
-            if suffix == ".html":
-                artifact_type = "html"
-            elif suffix == ".json":
-                artifact_type = "json"
-            elif suffix == ".txt":
-                artifact_type = "text"
+
+        # If no explicit type was provided, default to image.
+        if artifact_type is None:
+            artifact_type = "image"
+
+        # If caller explicitly asked for image but extension indicates text-ish,
+        # infer a better type.
+        if artifact_type == "image":
+            extension_map = {
+                ".html": "html",
+                ".json": "json",
+                ".txt": "text",
+            }
+            artifact_type = extension_map.get(suffix, artifact_type)
 
         baseline_path = self.baseline_dir / artifact_name
         baseline_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Compute hash (normalize HTML and JSON)
         should_normalize = artifact_type in ("html", "json")
         hash_value = self._compute_file_hash(artifact_path, normalize=should_normalize)
 
-        # Store hash metadata
         self.hashes[artifact_name] = {
             "hash": hash_value,
             "type": artifact_type,
@@ -268,7 +279,6 @@ class BaselineManager:
         }
         self._save_hashes()
 
-        # Copy file to baseline
         shutil.copy2(artifact_path, baseline_path)
 
     def compare_artifact(
@@ -296,7 +306,6 @@ class BaselineManager:
         )
         baseline_path = self.baseline_dir / artifact_name
 
-        # For images with tolerance, use pixel-based comparison
         if (
             artifact_type == "image"
             and self.image_tolerance > 0
@@ -320,7 +329,6 @@ class BaselineManager:
                 ),
             }
 
-        # Hash-based comparison (default for all, and fallback for images)
         should_normalize = artifact_type in ("html", "json")
         current_hash = self._compute_file_hash(
             artifact_path, normalize=should_normalize
@@ -383,12 +391,7 @@ class BaselineManager:
         artifact_path = Path(artifact_path)
         old_hash = self.hashes.get(artifact_name, {}).get("hash")
 
-        # Get artifact type from existing baseline or default
         artifact_type = self.hashes.get(artifact_name, {}).get("type", "image")
-        # Delete the old baseline file before saving the new one.
-        # This handles the edge case where the file extension has changed
-        # (e.g. .png → .jpg), which would otherwise leave an orphaned file
-        # on disk since shutil.copy2 writes to the new path without cleaning up.
         self.delete_baseline(artifact_name)
         self.save_baseline(artifact_name, artifact_path, artifact_type)
         new_hash = self.hashes[artifact_name]["hash"]

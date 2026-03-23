@@ -74,13 +74,15 @@ ruff = "^0.6.0"
 mypy = "^1.10.0"
 pytest-xdist = "^3.6.0"
 poethepoet = "^0.40.0"
+pytest-cov = "^7.0.0"
 
 # ============================================================================
 # Pytest configuration
 # ============================================================================
 [tool.pytest.ini_options]
 addopts = "-ra"
-testpaths = ["tests"]
+pythonpath = ["src"]
+testpaths = ["tests/unit", "tests/integration"]
 markers = [
     "integration: Integration tests (all integration tests should be marked with this)",
     "integration_wiring: Plugin wiring integration tests",
@@ -139,4 +141,18 @@ lint = "ruff check . --fix"
 lint-check = "ruff check ."
 typecheck = "mypy src"
 check = ["fmt", "lint", "typecheck"]
+coverage = "pytest --cov=pytest_a11y --cov-branch --cov-report=term-missing --cov-report=xml --cache-clear tests/unit -q"
 
+[tool.coverage.run]
+branch = true
+source = ["pytest_a11y"]
+omit = [
+    "tests/*",
+    "src/pytest_a11y/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 100
+
+[tool.poe.tasks.clean]
+cmd = "python scripts/clean.py"
