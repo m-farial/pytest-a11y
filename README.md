@@ -168,7 +168,7 @@ You can control where reports are written using multiple configuration layers (h
 When `pytest_configure` runs:
 
 1. If `config.a11y_session_dir` exists (set externally), that path is used directly and normalized.
-2. Otherwise, the directory is resolved by `_resolve_a11y_dir()` and a timestamped subfolder is created:
+2. Otherwise, the directory is resolved using the configuration priority above and a timestamped subfolder is created:
    - `<a11y_dir>/run_YYYYMMDD_HHMMSS`
 3. `config.a11y_dir` is the root folder and `config.a11y_session_dir` is the specific run folder.
 
