@@ -178,6 +178,50 @@ class TestPytestConfigure:
         assert config.a11y_enabled is False
         assert config.a11y_dir == expected_root
         assert config.a11y_session_dir == expected_session_dir
+
+    @patch("pytest_a11y.plugin.datetime")
+    @patch("pytest_a11y.plugin._resolve_a11y_dir")
+    def test_pytest_configure_uses_existing_session_dir_when_present(
+        self,
+        mock_resolve_a11y_dir: MagicMock,
+        mock_datetime: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Honor config.a11y_session_dir if set before pytest_configure."""
+        config = MagicMock()
+        config.getoption.return_value = True
+        config.a11y_session_dir = tmp_path / "explicit_dir"
+
+        plugin.pytest_configure(config)
+
+        expected_session_dir = (tmp_path / "explicit_dir").expanduser().resolve()
+
+        assert config.a11y_enabled is True
+        assert config.a11y_session_dir == expected_session_dir
+        assert config.a11y_dir == expected_session_dir.parent
+        assert expected_session_dir.exists()
+
+    @patch("pytest_a11y.plugin.datetime")
+    @patch("pytest_a11y.plugin._resolve_a11y_dir")
+    def test_pytest_configure_with_existing_session_dir_does_not_create_when_disabled(
+        self,
+        mock_resolve_a11y_dir: MagicMock,
+        mock_datetime: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """If a11y disabled, existing session_dir is preserved but not created."""
+        config = MagicMock()
+        config.getoption.return_value = False
+        config.a11y_session_dir = tmp_path / "explicit_dir"
+
+        plugin.pytest_configure(config)
+
+        expected_session_dir = (tmp_path / "explicit_dir").expanduser().resolve()
+
+        assert config.a11y_enabled is False
+        assert config.a11y_session_dir == expected_session_dir
+        assert config.a11y_dir == expected_session_dir.parent
+        assert not expected_session_dir.exists()
         assert not expected_session_dir.exists()
 
 

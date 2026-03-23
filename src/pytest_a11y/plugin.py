@@ -85,24 +85,28 @@ def pytest_configure(config: pytest.Config) -> None:
     Args:
         config: pytest configuration object - we attach custom attributes to it
     """
-    # Store a11y settings in config for access in assertions
     config.a11y_enabled = config.getoption("--a11y")  # type: ignore[attr-defined]
 
-    # Resolve a11y directory with priority order
-    a11y_dir: str | Path = _resolve_a11y_dir(config)
+    # Honor a pre-resolved session directory if another plugin/app set it.
+    existing_session_dir = getattr(config, "a11y_session_dir", None)
 
-    # Support temp directories for CI/CD (e.g., /tmp, $TMPDIR)
-    a11y_dir = Path(a11y_dir).expanduser().resolve()
-    config.a11y_dir = a11y_dir  # type: ignore[attr-defined]
+    # Avoid false-positive MagicMock attr values in tests; only apply when a real
+    # path-like value is present.
+    if isinstance(existing_session_dir, str | Path) and existing_session_dir:
+        resolved_session_dir = Path(existing_session_dir).expanduser().resolve()
+        config.a11y_session_dir = resolved_session_dir  # type: ignore[attr-defined]
+        config.a11y_dir = resolved_session_dir.parent  # type: ignore[attr-defined]
+    else:
+        a11y_dir: str | Path = _resolve_a11y_dir(config)
+        a11y_dir = Path(a11y_dir).expanduser().resolve()
+        config.a11y_dir = a11y_dir  # type: ignore[attr-defined]
 
-    # Create timestamped session directory for this test run
-    timestamp: str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir: Path = a11y_dir / f"run_{timestamp}"
-    config.a11y_session_dir = session_dir  # type: ignore[attr-defined]
+        timestamp: str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_dir: Path = a11y_dir / f"run_{timestamp}"
+        config.a11y_session_dir = session_dir  # type: ignore[attr-defined]
 
-    # Create directory if it doesn't exist and a11y is enabled
     if config.a11y_enabled:  # type: ignore[attr-defined]
-        session_dir.mkdir(parents=True, exist_ok=True)
+        Path(config.a11y_session_dir).mkdir(parents=True, exist_ok=True)  # type: ignore[attr-defined]
 
 
 # ============================================================================
