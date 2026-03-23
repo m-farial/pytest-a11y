@@ -431,6 +431,32 @@ class TestDeleteAndSaveBaseline:
         assert manager.hashes[artifact_name]["type"] == expected_type
         assert (manager.baseline_dir / artifact_name).exists()
 
+    @pytest.mark.parametrize(
+        ("artifact_name", "expected_type"),
+        [
+            ("report.html", "html"),
+            ("report.json", "json"),
+            ("image.png", "image"),
+            ("image.jpg", "image"),
+            ("report.txt", "text"),
+        ],
+    )
+    def test_save_baseline_infers_type_from_extension_when_type_not_given(
+        self,
+        tmp_path: Path,
+        artifact_name: str,
+        expected_type: str,
+    ) -> None:
+        """Infer type from extension when artifact_type is omitted (None)."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / artifact_name
+        source.write_text("content", encoding="utf-8")
+
+        manager.save_baseline(artifact_name, source)
+
+        assert manager.hashes[artifact_name]["type"] == expected_type
+        assert (manager.baseline_dir / artifact_name).exists()
+
     def test_save_baseline_infers_text_type_and_uses_expected_baseline_path(
         self,
         tmp_path: Path,
@@ -468,31 +494,28 @@ class TestDeleteAndSaveBaseline:
         assert manager.hashes["style.css"]["type"] == "image"
         assert (manager.baseline_dir / "style.css").exists()
 
-    def test_save_baseline_preserves_explicit_non_image_type_for_html_suffix(
+    @pytest.mark.parametrize(
+        ("artifact_name", "content"),
+        [
+            ("report.html", "<html></html>"),
+            ("report.json", "{}"),
+            ("report.txt", "content"),
+        ],
+    )
+    def test_save_baseline_preserves_explicit_non_image_type_for_text_like_suffixes(
         self,
         tmp_path: Path,
+        artifact_name: str,
+        content: str,
     ) -> None:
-        """Do not override an explicit non-image type based on .html suffix."""
+        """Do not override an explicit non-image type based on .html/.json/.txt suffix."""
         manager = BaselineManager(tmp_path / "baselines")
-        source = tmp_path / "report.html"
-        source.write_text("<html></html>", encoding="utf-8")
+        source = tmp_path / artifact_name
+        source.write_text(content, encoding="utf-8")
 
-        manager.save_baseline("report.html", source, "text")
+        manager.save_baseline(artifact_name, source, "text")
 
-        assert manager.hashes["report.html"]["type"] == "text"
-
-    def test_save_baseline_preserves_explicit_non_image_type_for_json_suffix(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Do not override an explicit non-image type based on .json suffix."""
-        manager = BaselineManager(tmp_path / "baselines")
-        source = tmp_path / "report.json"
-        source.write_text("{}", encoding="utf-8")
-
-        manager.save_baseline("report.json", source, "text")
-
-        assert manager.hashes["report.json"]["type"] == "text"
+        assert manager.hashes[artifact_name]["type"] == "text"
 
     def test_init_uses_loaded_hashes_and_stores_image_tolerance(
         self,

@@ -88,7 +88,7 @@ class TestSelectorHelpers:
         assert selectors == ["#one", "#two"]
 
     @pytest.mark.parametrize(
-        ("violation, expected"),
+        ("violation", "expected"),
         [
             ({"nodes": []}, True),
             ({"nodes": [{"target": ["html", "body"]}]}, True),
@@ -109,7 +109,7 @@ class TestDisplayHelpers:
     """Tests for display and JavaScript helper functions."""
 
     @pytest.mark.parametrize(
-        ("impact, expected"),
+        ("impact", "expected"),
         [
             ("critical", "#b00020"),
             ("serious", "#e65100"),

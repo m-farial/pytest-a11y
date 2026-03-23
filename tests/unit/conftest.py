@@ -52,13 +52,17 @@ class DummyRequest:
         self.node = DummyNode(nodeid=nodeid, name=name)
         self._driver = driver
 
+    def _get_fixturestack(self) -> list:
+        """Return a no-op fixture stack for FixtureLookupError formatting."""
+        return []
+
     def getfixturevalue(self, name: str) -> Any:
         """Return the configured driver fixture when requested."""
         if name == "driver":
             if self._driver is None:
-                raise pytest.FixtureLookupError(name, None)
+                raise pytest.FixtureLookupError(name, self)
             return self._driver
-        raise pytest.FixtureLookupError(name, None)
+        raise pytest.FixtureLookupError(name, self)
 
 
 class DummyDriver:

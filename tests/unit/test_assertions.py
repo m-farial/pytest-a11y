@@ -500,6 +500,17 @@ class TestGenerateReports:
         mock_warning.assert_called_once()
 
 
+class RequestHelperWithoutDriver:
+    """Simple request stub raising FixtureLookupError on any fixture."""
+
+    @staticmethod
+    def _get_fixturestack() -> list:
+        return []
+
+    def getfixturevalue(self, name: str) -> Any:
+        raise pytest.FixtureLookupError(name, self)
+
+
 class TestRawAssertions:
     """Tests for raw AxeResults assertions."""
 
@@ -526,16 +537,10 @@ class TestRawAssertions:
     ) -> None:
         """Skip report generation when the driver fixture cannot be resolved."""
 
-        class RequestWithoutDriver:
-            """Request double that raises on fixture lookup."""
-
-            def getfixturevalue(self, name: str) -> Any:
-                raise pytest.FixtureLookupError(name, None)
-
         monkeypatch.setattr(
             assertions_module.pytest,
             "current_request",
-            RequestWithoutDriver(),
+            RequestHelperWithoutDriver(),
             raising=False,
         )
 
@@ -575,16 +580,10 @@ class TestRawAssertions:
     ) -> None:
         """Skip report generation when the driver fixture cannot be resolved."""
 
-        class RequestWithoutDriver:
-            """Request double that raises on fixture lookup."""
-
-            def getfixturevalue(self, name: str) -> Any:
-                raise pytest.FixtureLookupError(name, None)
-
         monkeypatch.setattr(
             assertions_module.pytest,
             "current_request",
-            RequestWithoutDriver(),
+            RequestHelperWithoutDriver(),
             raising=False,
         )
 

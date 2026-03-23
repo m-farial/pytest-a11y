@@ -239,7 +239,7 @@ class BaselineManager:
         self,
         artifact_name: str,
         artifact_path: Path | str,
-        artifact_type: str = "image",
+        artifact_type: str | None = None,
     ) -> None:
         """
         Save artifact to baseline and compute hash.
@@ -252,7 +252,12 @@ class BaselineManager:
         artifact_path = Path(artifact_path)
         suffix = artifact_path.suffix.lower()
 
-        # Only adjust artifact_type when the caller requested a generic "image"
+        # If no explicit type was provided, default to image.
+        if artifact_type is None:
+            artifact_type = "image"
+
+        # If caller explicitly asked for image but extension indicates text-ish,
+        # infer a better type.
         if artifact_type == "image":
             extension_map = {
                 ".html": "html",
