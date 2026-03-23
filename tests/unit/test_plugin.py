@@ -11,6 +11,13 @@ import pytest
 import pytest_a11y.plugin as plugin
 
 
+class BytesPathLike(os.PathLike):
+    """os.PathLike returning bytes from __fspath__."""
+
+    def __fspath__(self) -> bytes:
+        return b"some_dir"
+
+
 class TestPluginModuleImport:
     """Tests for import-time execution in the plugin module."""
 
@@ -131,11 +138,14 @@ class TestResolveA11yDir:
 
         assert result == expected
 
-    def test_coerce_pathlike_ignores_mock_object(self) -> None:
-        """Ensure unittest.mock objects are not treated as real paths."""
-        result = plugin._coerce_pathlike(MagicMock())
+    def test_coerce_pathlike_rejects_invalid_types(self) -> None:
+        """Ensure non-pathlike runtimes are not converted into a Path."""
+        assert plugin._coerce_pathlike(123) is None
+        assert plugin._coerce_pathlike(object()) is None
 
-        assert result is None
+    def test_coerce_pathlike_bytes_pathlike(self) -> None:
+        """A real os.PathLike object returning bytes should return None."""
+        assert plugin._coerce_pathlike(BytesPathLike()) is None
 
 
 class TestPytestConfigure:

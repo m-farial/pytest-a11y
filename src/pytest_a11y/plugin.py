@@ -55,7 +55,8 @@ def pytest_configure(config: pytest.Config) -> None:
     """
     config.a11y_enabled = config.getoption("--a11y")  # type: ignore[attr-defined]
 
-    existing_session_dir = _coerce_pathlike(getattr(config, "a11y_session_dir", None))
+    # existing_session_dir = _coerce_pathlike(getattrexisting_session_dir = _coerce_pathlike(
+    existing_session_dir = _coerce_pathlike(config.__dict__.get("a11y_session_dir"))
 
     if existing_session_dir is not None:
         resolved_session_dir = existing_session_dir.expanduser().resolve()
@@ -85,9 +86,6 @@ def _coerce_pathlike(value: object) -> Path | None:
     if value is None:
         return None
 
-    if _is_mock_object(value):
-        return None
-
     path_value: str | os.PathLike[str] | None
 
     if isinstance(value, str):
@@ -98,18 +96,14 @@ def _coerce_pathlike(value: object) -> Path | None:
         return None
 
     path_text = os.fspath(path_value)
+
+    if isinstance(path_text, bytes):
+        return None
+
     if not path_text:
         return None
 
     return Path(path_text)
-
-
-def _is_mock_object(value: object) -> bool:
-    """
-    Check whether a value is a unittest.mock object.
-    """
-    value_type = type(value)
-    return getattr(value_type, "__module__", "") == "unittest.mock"
 
 
 def _resolve_a11y_dir(config: pytest.Config) -> Path:
