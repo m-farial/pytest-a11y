@@ -251,15 +251,15 @@ class BaselineManager:
         """
         artifact_path = Path(artifact_path)
         suffix = artifact_path.suffix.lower()
-        suffix = artifact_path.suffix.lower()
-        if suffix == ".png" or suffix == ".jpg":
-            artifact_type = "image"
-        elif suffix == ".html":
-            artifact_type = "html"
-        elif suffix == ".json":
-            artifact_type = "json"
-        elif suffix == ".txt":
-            artifact_type = "text"
+
+        # Only adjust artifact_type when the caller requested a generic "image"
+        if artifact_type == "image":
+            extension_map = {
+                ".html": "html",
+                ".json": "json",
+                ".txt": "text",
+            }
+            artifact_type = extension_map.get(suffix, artifact_type)
 
         baseline_path = self.baseline_dir / artifact_name
         baseline_path.parent.mkdir(parents=True, exist_ok=True)

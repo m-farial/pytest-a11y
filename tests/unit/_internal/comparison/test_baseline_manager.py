@@ -468,6 +468,67 @@ class TestDeleteAndSaveBaseline:
         assert manager.hashes["style.css"]["type"] == "image"
         assert (manager.baseline_dir / "style.css").exists()
 
+    def test_save_baseline_preserves_explicit_non_image_type_for_html_suffix(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Do not override an explicit non-image type based on .html suffix."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / "report.html"
+        source.write_text("<html></html>", encoding="utf-8")
+
+        manager.save_baseline("report.html", source, "text")
+
+        assert manager.hashes["report.html"]["type"] == "text"
+
+    def test_save_baseline_preserves_explicit_non_image_type_for_json_suffix(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Do not override an explicit non-image type based on .json suffix."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / "report.json"
+        source.write_text("{}", encoding="utf-8")
+
+        manager.save_baseline("report.json", source, "text")
+
+        assert manager.hashes["report.json"]["type"] == "text"
+
+    def test_init_uses_loaded_hashes_and_stores_image_tolerance(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Use _load_hashes() during initialization and store config values."""
+        expected_hashes = {"artifact.txt": {"hash": "abc", "type": "text"}}
+
+        with patch.object(
+            BaselineManager,
+            "_load_hashes",
+            return_value=expected_hashes,
+        ) as mock_load:
+            manager = BaselineManager(tmp_path / "baselines", image_tolerance=7)
+
+        mock_load.assert_called_once()
+        assert manager.baseline_dir == tmp_path / "baselines"
+        assert manager.hashes_file == (tmp_path / "baselines" / "baseline_hashes.json")
+        assert manager.baseline_dir.exists()
+        assert manager.image_tolerance == 7
+        assert manager.hashes == expected_hashes
+
+    def test_save_baseline_preserves_explicit_non_image_type_for_txt_suffix(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Do not override an explicit non-image type based on .txt suffix."""
+        manager = BaselineManager(tmp_path / "baselines")
+        source = tmp_path / "report.txt"
+        source.write_text("content", encoding="utf-8")
+
+        manager.save_baseline("report.txt", source, "text")
+
+        assert manager.hashes["report.txt"]["type"] == "text"
+        assert (manager.baseline_dir / "report.txt").exists()
+
 
 class TestCompareArtifact:
     """Tests for artifact comparison behavior."""
