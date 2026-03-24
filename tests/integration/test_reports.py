@@ -39,9 +39,9 @@ def test_reporting_artifacts(
     assert artifacts.json_report.stat().st_size > 0, "JSON report is empty"
 
     # Ensure reports were written into the pytest-configured session directory
-    assert (
-        artifacts.html_report.parent == request.config.a11y_session_dir
-    ), "Reports were not written into `request.config.a11y_session_dir`"
+    assert artifacts.html_report.parent == request.config.a11y_session_dir, (
+        "Reports were not written into `request.config.a11y_session_dir`"
+    )
 
     test_artifacts = {
         "report.html": artifacts.html_report,

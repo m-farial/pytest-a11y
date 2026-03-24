@@ -91,6 +91,8 @@ __all__ = [
     "AxeResults",
     "AxeRunnerProtocol",
     "AxeViolationRaw",
+    # Baseline management
+    "BaselineManager",
     "Node",
     "Results",
     "Severity",
@@ -102,8 +104,6 @@ __all__ = [
     "assert_no_critical_violations",
     "assert_results_no_critical",
     "assert_results_no_violations",
-    # Baseline management
-    "BaselineManager",
     # Fixtures (available via pytest automatically)
     "axe",
 ]

@@ -23,4 +23,4 @@ from pytest_a11y.axe.fixtures import axe
 
 from ._runner import AxeRunner
 
-__all__ = ["axe", "AxeRunner"]
+__all__ = ["AxeRunner", "axe"]
