@@ -155,6 +155,25 @@ The assertion functions automatically detect the `--a11y` flag and generate repo
 
 **No fixture selection needed. Same code works both ways.**
 
+### Configuring report output directory
+
+You can control where reports are written using multiple configuration layers (highest precedence first):
+
+- `config.option.a11y_reports` (programmatic override, e.g. in `conftest.py`)
+- `--a11y-dir` CLI option
+- `a11y_reports` in `pytest.ini`
+- `A11Y_DIR` environment variable
+- default: `.a11y_reports`
+
+When `pytest_configure` runs:
+
+1. If `config.a11y_session_dir` exists (set externally), that path is used directly and normalized.
+2. Otherwise, the directory is resolved using the configuration priority above and a timestamped subfolder is created:
+   - `<a11y_dir>/run_YYYYMMDD_HHMMSS`
+3. `config.a11y_dir` is the root folder and `config.a11y_session_dir` is the specific run folder.
+
+Only when `--a11y` is enabled does the plugin create the session directory and generate reports.
+
 ---
 
 ## API Reference

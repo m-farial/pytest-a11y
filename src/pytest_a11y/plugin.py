@@ -18,30 +18,12 @@ from typing import Any
 
 import pytest
 
-# ============================================================================
-# Pytest Hook Implementations
-# ============================================================================
-# These functions have special names that pytest recognizes and calls automatically.
-# They MUST be in the module referenced by the entry point.
-# ============================================================================
+_DEFAULT_A11Y_DIR = ".a11y_reports"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """
     Register CLI options for the a11y plugin.
-
-    This is a pytest hook that gets called during argument parsing.
-    Adds the following options:
-        --a11y: Enable accessibility checks and report generation
-        --a11y-dir: Directory to save reports (default: .a11y_reports)
-
-    Can also be configured via:
-        - pytest.ini: [pytest] a11y_reports = /path/to/reports
-        - conftest.py: config.option.a11y_reports = Path("/path/to/reports")
-        - Environment: A11Y_DIR=/path/to/reports
-
-    Args:
-        parser: pytest argument parser object
     """
     group: Any = parser.getgroup("a11y", "Accessibility testing options")
 
@@ -55,15 +37,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     group.addoption(
         "--a11y-dir",
         type=str,
-        default=".a11y_reports",
-        help="Directory to save a11y reports (default: .a11y_reports)",
+        default=_DEFAULT_A11Y_DIR,
+        help=f"Directory to save a11y reports (default: {_DEFAULT_A11Y_DIR})",
     )
 
-    # Add INI file option for pytest.ini configuration
     parser.addini(
         "a11y_reports",
         type="string",
-        default=".a11y_reports",
+        default=_DEFAULT_A11Y_DIR,
         help="Directory to save a11y reports (can also use --a11y-dir CLI option)",
     )
 
@@ -71,88 +52,82 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     """
     Configure pytest with a11y plugin settings.
-
-    This is a pytest hook called after command line options are parsed.
-    Sets up the a11y directory if accessibility testing is enabled.
-
-    Configuration priority (highest to lowest):
-        1. conftest.py: config.option.a11y_reports = Path(...)
-        2. CLI: --a11y-dir /path/to/reports
-        3. pytest.ini: a11y_reports = /path/to/reports
-        4. Environment: A11Y_DIR=/path/to/reports
-        5. Default: .a11y_reports
-
-    Args:
-        config: pytest configuration object - we attach custom attributes to it
     """
-    # Store a11y settings in config for access in assertions
     config.a11y_enabled = config.getoption("--a11y")  # type: ignore[attr-defined]
 
-    # Resolve a11y directory with priority order
-    a11y_dir: str | Path = _resolve_a11y_dir(config)
+    # existing_session_dir = _coerce_pathlike(getattrexisting_session_dir = _coerce_pathlike(
+    existing_session_dir = _coerce_pathlike(config.__dict__.get("a11y_session_dir"))
 
-    # Support temp directories for CI/CD (e.g., /tmp, $TMPDIR)
-    a11y_dir = Path(a11y_dir).expanduser().resolve()
-    config.a11y_dir = a11y_dir  # type: ignore[attr-defined]
+    if existing_session_dir is not None:
+        resolved_session_dir = existing_session_dir.expanduser().resolve()
+        config.a11y_session_dir = resolved_session_dir  # type: ignore[attr-defined]
+        config.a11y_dir = resolved_session_dir.parent  # type: ignore[attr-defined]
+    else:
+        resolved_a11y_dir = _resolve_a11y_dir(config).expanduser().resolve()
+        config.a11y_dir = resolved_a11y_dir  # type: ignore[attr-defined]
 
-    # Create timestamped session directory for this test run
-    timestamp: str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir: Path = a11y_dir / f"run_{timestamp}"
-    config.a11y_session_dir = session_dir  # type: ignore[attr-defined]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        config.a11y_session_dir = resolved_a11y_dir / f"run_{timestamp}"  # type: ignore[attr-defined]
 
-    # Create directory if it doesn't exist and a11y is enabled
     if config.a11y_enabled:  # type: ignore[attr-defined]
-        session_dir.mkdir(parents=True, exist_ok=True)
+        Path(config.a11y_session_dir).mkdir(  # type: ignore[attr-defined]
+            parents=True,
+            exist_ok=True,
+        )
 
 
-# ============================================================================
-# Utility Functions (private helpers)
-# ============================================================================
+def _coerce_pathlike(value: object) -> Path | None:
+    """
+    Convert a supported path-like value into a Path.
+
+    Returns None for values that should not be treated as real paths,
+    including None, empty strings, and unittest.mock objects used in tests.
+    """
+    if value is None:
+        return None
+
+    path_value: str | os.PathLike[str] | None
+
+    if isinstance(value, str):
+        path_value = value
+    elif isinstance(value, os.PathLike):
+        path_value = value
+    else:
+        return None
+
+    path_text = os.fspath(path_value)
+
+    if isinstance(path_text, bytes):
+        return None
+
+    if not path_text:
+        return None
+
+    return Path(path_text)
 
 
 def _resolve_a11y_dir(config: pytest.Config) -> Path:
     """
     Resolve a11y reports directory from all configuration sources.
-
-    Checks multiple configuration sources in priority order:
-        1. conftest.py: config.option.a11y_reports (if set programmatically)
-        2. CLI: --a11y-dir /path/to/reports
-        3. pytest.ini: a11y_reports = /path/to/reports
-        4. Environment: A11Y_DIR=/path/to/reports
-        5. Default: .a11y_reports
-
-    Args:
-        config: pytest configuration object
-
-    Returns:
-        Resolved Path object for the a11y reports directory
     """
-    # Priority 1: Check if config.option.a11y_reports was set programmatically
-    if hasattr(config.option, "a11y_reports") and config.option.a11y_reports:
-        return Path(config.option.a11y_reports)
+    configured_override = _coerce_pathlike(getattr(config.option, "a11y_reports", None))
+    if configured_override is not None:
+        return configured_override
 
-    # Priority 2: Check CLI --a11y-dir (only if not default)
-    cli_dir: str | Any = config.getoption("--a11y-dir")
-    if cli_dir and cli_dir != ".a11y_reports":
-        return Path(cli_dir)
+    cli_dir = _coerce_pathlike(config.getoption("--a11y-dir"))
+    if cli_dir is not None and cli_dir != Path(_DEFAULT_A11Y_DIR):
+        return cli_dir
 
-    # Priority 3: Check pytest.ini a11y_reports setting
-    ini_dir: str | Any = config.getini("a11y_reports")
-    if ini_dir and ini_dir != ".a11y_reports":
-        return Path(ini_dir)
+    ini_dir = _coerce_pathlike(config.getini("a11y_reports"))
+    if ini_dir is not None and ini_dir != Path(_DEFAULT_A11Y_DIR):
+        return ini_dir
 
-    # Priority 4: Check environment variable
-    env_dir: str | None = os.environ.get("A11Y_DIR")
-    if env_dir:
-        return Path(env_dir)
+    env_dir = _coerce_pathlike(os.environ.get("A11Y_DIR"))
+    if env_dir is not None:
+        return env_dir
 
-    # Priority 5: Return default
-    return Path(".a11y_reports")
+    return Path(_DEFAULT_A11Y_DIR)
 
-
-# ============================================================================
-# Public Exports
-# ============================================================================
 
 __all__ = [
     "pytest_addoption",
