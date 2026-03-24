@@ -83,9 +83,9 @@ def test_default_configuration(pytester: pytest.Pytester) -> None:
     output = str(result.stdout) + str(result.stderr)
 
     config = extract_config_from_output(output)
-    assert config["resolved"].endswith(
-        ".a11y_reports"
-    ), "Default should be .a11y_reports"
+    assert config["resolved"].endswith(".a11y_reports"), (
+        "Default should be .a11y_reports"
+    )
 
 
 @pytest.mark.integration
@@ -113,9 +113,9 @@ def test_environment_variable_override(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = DummyConfig()
 
     resolved = plugin._resolve_a11y_dir(cfg)
-    assert str(resolved).endswith(
-        "env_reports"
-    ), "Environment variable should override default"
+    assert str(resolved).endswith("env_reports"), (
+        "Environment variable should override default"
+    )
 
 
 @pytest.mark.integration
@@ -142,6 +142,6 @@ def test_cli_argument_override_all(pytester: pytest.Pytester) -> None:
     output = str(result.stdout) + str(result.stderr)
 
     config = extract_config_from_output(output)
-    assert config["resolved"].endswith(
-        "cli_reports"
-    ), "CLI argument should have highest priority"
+    assert config["resolved"].endswith("cli_reports"), (
+        "CLI argument should have highest priority"
+    )

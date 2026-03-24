@@ -29,7 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "pytest>=9.0.2",
-    "selenium>=4.10,<5",
+    "selenium>=4.41.0,<5",
     "axe-selenium-python>=2.1.6",
     "pillow>=12.1.0",
 ]
@@ -65,16 +65,16 @@ packages = [{ include = "pytest_a11y", from = "src" }]
 [tool.poetry.dependencies]
 python = "^3.10"
 pytest = "^9.0.2"
-selenium = ">=4.10,<5"
+selenium = "^4.41.0"
 axe-selenium-python = "^2.1.6"
 pillow = "^12.1.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.6.0"
+ruff = "^0.15.7"
 mypy = "^1.10.0"
 pytest-xdist = "^3.6.0"
-poethepoet = "^0.40.0"
-pytest-cov = "^7.0.0"
+poethepoet = "^0.42.1"
+pytest-cov = "^7.1.0"
 
 # ============================================================================
 # Pytest configuration

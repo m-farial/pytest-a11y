@@ -164,9 +164,9 @@ def test_axe_run_respects_opt_in_flag_and_writes_reports(
 
     htmls = list(session_dir.glob("*.html"))
     jsons = list(session_dir.glob("*.json"))
-    assert (
-        htmls or jsons
-    ), "Expected HTML/JSON report to be generated when --a11y is enabled"
+    assert htmls or jsons, (
+        "Expected HTML/JSON report to be generated when --a11y is enabled"
+    )
 
 
 @pytest.mark.integration
