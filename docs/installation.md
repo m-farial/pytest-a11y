@@ -154,10 +154,10 @@ Check that pytest-a11y is installed correctly:
 
 ```bash
 pytest --version
-pytest --co -q | grep a11y
+pytest --fixtures | findstr a11y
 ```
 
-You should see output mentioning pytest-a11y fixtures.
+You should see output mentioning pytest-a11y fixtures and the `axe` fixture.
 
 Or test with a simple script:
 
@@ -227,7 +227,6 @@ For accessibility testing configuration (report directory, standards, etc.), see
 Common options:
 - `--a11y` - Enable accessibility reports
 - `--a11y-dir ./my_reports` - Custom report directory
-- `--a11y-standard wcag2aaa` - WCAG compliance level
 
 ## Next Steps
 
