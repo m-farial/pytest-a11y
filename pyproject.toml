@@ -29,7 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "pytest>=9.0.2",
-    "selenium>=4.41.0",
+    "selenium>=4.41.0,<5",
     "axe-selenium-python>=2.1.6",
     "pillow>=12.1.0",
 ]
