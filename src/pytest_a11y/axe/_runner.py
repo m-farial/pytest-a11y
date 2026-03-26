@@ -139,7 +139,6 @@ class AxeRunner:
             - Results are typed as AxeResults TypedDict
         """
         self._axe.inject()
-        options = None
 
         if self.tags:
             options = {
@@ -148,8 +147,9 @@ class AxeRunner:
                     "values": self.tags,
                 }
             }
-
-        axe_results = self._axe.run(options=options)
+            axe_results = self._axe.run(options=options)
+        else:
+            axe_results = self._axe.run()
 
         # Forward the pytest request (if any) so report generation can use
         # `request.config` / `request.node` instead of relying on global state.

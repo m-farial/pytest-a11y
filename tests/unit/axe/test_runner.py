@@ -222,7 +222,7 @@ class TestRun:
 
         assert result == axe_results
         axe_instance.inject.assert_called_once()
-        axe_instance.run.assert_called_once()
+        axe_instance.run.assert_called_once_with()
 
         mock_reports.assert_called_once()
 
