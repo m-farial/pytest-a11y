@@ -144,6 +144,18 @@ def test_wcag_specific(axe: AxeRunnerProtocol) -> None:
 
 ---
 
+## Sample Report Output
+
+After running with `--a11y`, view the generated report in your browser:
+
+- `.a11y_reports/run_<timestamp>/test_<name>__<branch>__<hash>.html`
+- `tests/integration/baselines/test_reporting_artifacts[bad]/report.html` (sample baseline)
+
+Open with:
+
+start .a11y_reports/run_<timestamp>/test_<name>__<branch>__<hash>.html
+```
+
 ## Common Scenarios
 
 ### Scenario 1: Wait for Dynamic Content
