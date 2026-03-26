@@ -246,8 +246,13 @@ def test_resolve_a11y_tags_unsupported_standard_error_contains_aliases() -> None
     with pytest.raises(
         pytest.UsageError,
         match="Invalid value for --a11y-standard/a11y_standard",
-    ):
+    ) as excinfo:
         plugin._resolve_a11y_tags(config)
+        message = str(excinfo.value)
+
+        # The error message should be informative and mention supported values/aliases.
+        assert "--a11y-standard" in message
+        assert "supported" in message.lower()
 
 
 def test_resolve_a11y_tags_falls_to_wcag_level() -> None:
