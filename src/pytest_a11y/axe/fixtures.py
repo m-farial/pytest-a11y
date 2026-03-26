@@ -28,6 +28,6 @@ def axe(driver: WebDriver, request: pytest.FixtureRequest) -> AxeRunnerProtocol:
             driver.get("https://example.com")
             results = axe.run()  # will write reports if --a11y
     """
-    tags = getattr(request.config, "a11y_tags", None)
+    tags: list[str] | None = getattr(request.config, "a11y_tags", None)
 
     return AxeRunner(driver, request=request, tags=tags)
