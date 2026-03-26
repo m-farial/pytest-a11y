@@ -153,7 +153,6 @@ After running with `--a11y`, view the generated report in your browser:
 
 Open with:
 
-```bash
 start .a11y_reports/run_<timestamp>/test_<name>__<branch>__<hash>.html
 ```
 
