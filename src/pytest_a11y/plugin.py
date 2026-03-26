@@ -99,7 +99,8 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help=(
             "Comma-separated list of raw axe tags (advanced mode). "
-            "Plugin validates only tag shape and emptiness; full catalog is not maintained."
+            "Plugin only trims/splits the list and drops empty values; it does not "
+            "validate tag format or maintain a full catalog of tags."
         ),
     )
 
