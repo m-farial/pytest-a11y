@@ -15,6 +15,8 @@ A **pytest plugin** for automated accessibility testing with [axe-core](https://
 
 Perfect for teams that want to **shift accessibility testing left** and catch issues early in the development process.
 
+*Sample pytest-a11y report*
+[![Sample pytest-a11y report](docs/sample_a11y_report.gif)](docs/sample_a11y_report.gif)
 ---
 
 ## Quick Start
@@ -83,11 +85,12 @@ pytest tests/test_a11y.py --a11y -v
 tests/test_a11y.py::test_homepage_accessibility PASSED
 ```
 
-Reports automatically generated in `.a11y_reports/run_20260214_153022/`:
+Reports automatically generated in `.a11y_reports/run_20260222_214122/`:
 - `test_homepage_accessibility__master__abc123d.html` - Interactive HTML report with screenshots
 - `test_homepage_accessibility__master__abc123d.json` - Machine-readable JSON report
 - `violation_screenshots/` - Individual screenshots of each violation
 
+[![Sample report structure](docs/a11y_report_structure.png)](docs/a11y_report_structure.png)
 ---
 
 ## Design & Key Concepts
