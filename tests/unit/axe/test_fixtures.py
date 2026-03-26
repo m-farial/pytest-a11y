@@ -34,12 +34,12 @@ class TestAxeFixture:
         assert result is expected_runner
 
         # With `--a11y-standard` support, the runner gets the configured
-        # standard from request.config.a11y_standard.
-        expected_standard = getattr(mock_request.config, "a11y_standard", None)
+        # tags from request.config.a11y_tags.
+        expected_tags = getattr(mock_request.config, "a11y_tags", None)
         mock_axe_runner.assert_called_once_with(
             mock_driver,
             request=mock_request,
-            standard=expected_standard,
+            tags=expected_tags,
         )
 
     def test_axe_package_import_branch_covered_by_import_error(self) -> None:

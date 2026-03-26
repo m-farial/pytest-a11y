@@ -20,6 +20,32 @@ import pytest
 
 _DEFAULT_A11Y_DIR = ".a11y_reports"
 _DEFAULT_A11Y_STANDARD = "wcag2aa"
+_SUPPORTED_A11Y_TAGS: tuple[str, ...] = (
+    "wcag2a",
+    "wcag2aa",
+    "wcag2aaa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa",
+    "section508",
+)
+_STANDARD_ALIASES: dict[str, list[str]] = {
+    "wcag2.0:a": ["wcag2a"],
+    "wcag2.0:aa": ["wcag2a", "wcag2aa"],
+    "wcag2.0:aaa": ["wcag2a", "wcag2aa", "wcag2aaa"],
+    "wcag2.1:a": ["wcag21a"],
+    "wcag2.1:aa": ["wcag21a", "wcag21aa"],
+    "wcag2.2:aa": ["wcag2aa", "wcag21aa", "wcag22aa"],
+}
+WCAG_STANDARD_MAP = {
+    "wcag2a": ["wcag2a"],
+    "wcag2aa": ["wcag2a", "wcag2aa"],
+    "wcag2aaa": ["wcag2a", "wcag2aa", "wcag2aaa"],
+    "wcag21a": ["wcag21a"],
+    "wcag21aa": ["wcag21a", "wcag21aa"],
+    "wcag22aa": ["wcag2aa", "wcag21aa", "wcag22aa"],
+    "section508": ["section508"],
+}
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -47,8 +73,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         type=str,
         default=_DEFAULT_A11Y_STANDARD,
         help=(
-            "Accessibility standard to run axes against (default: wcag2aa). "
-            "Supported values: wcag2a, wcag2aa, wcag2aaa, section508"
+            "Accessibility standard tag(s) to run against. Accepts a single axe tag "
+            f"or a comma-separated list (supported tags: {', '.join(_SUPPORTED_A11Y_TAGS)}). "
+            "Also accepts aliases: wcag2.0:a, wcag2.0:aa, wcag2.0:aaa, "
+            "wcag2.1:a, wcag2.1:aa, wcag2.2:aa. "
+            f"Default: {_DEFAULT_A11Y_STANDARD}"
         ),
     )
 
@@ -63,7 +92,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "a11y_standard",
         type="string",
         default=_DEFAULT_A11Y_STANDARD,
-        help="Accessibility standard to run a11y checks against (can also use --a11y-standard CLI option)",
+        help=(
+            "Accessibility standard tag(s) to run against. Supports the same "
+            "values as --a11y-standard."
+        ),
     )
 
 
@@ -73,7 +105,6 @@ def pytest_configure(config: pytest.Config) -> None:
     """
     config.a11y_enabled = config.getoption("--a11y")  # type: ignore[attr-defined]
 
-    # existing_session_dir = _coerce_pathlike(getattrexisting_session_dir = _coerce_pathlike(
     existing_session_dir = _coerce_pathlike(config.__dict__.get("a11y_session_dir"))
 
     if existing_session_dir is not None:
@@ -87,7 +118,20 @@ def pytest_configure(config: pytest.Config) -> None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         config.a11y_session_dir = resolved_a11y_dir / f"run_{timestamp}"  # type: ignore[attr-defined]
 
-    config.a11y_standard = _resolve_a11y_standard(config)  # type: ignore[attr-defined]
+    standard = config.getoption("--a11y-standard")
+
+    if standard not in WCAG_STANDARD_MAP:
+        raise pytest.UsageError(
+            f"Unsupported accessibility standard '{standard}'. "
+            f"Supported: {', '.join(WCAG_STANDARD_MAP)}"
+        )
+
+    config.a11y_tags = WCAG_STANDARD_MAP[standard]  # type: ignore[attr-defined]
+    config.a11y_standard = standard  # type: ignore[attr-defined]
+
+    resolved_standards = _resolve_a11y_standard(config)
+    config.a11y_standards = resolved_standards  # type: ignore[attr-defined]
+    config.a11y_standard = ",".join(resolved_standards)  # type: ignore[attr-defined]
 
     if config.a11y_enabled:  # type: ignore[attr-defined]
         Path(config.a11y_session_dir).mkdir(  # type: ignore[attr-defined]
@@ -149,9 +193,9 @@ def _resolve_a11y_dir(config: pytest.Config) -> Path:
     return Path(_DEFAULT_A11Y_DIR)
 
 
-def _resolve_a11y_standard(config: pytest.Config) -> str:
+def _resolve_a11y_standard(config: pytest.Config) -> list[str]:
     """
-    Resolve the selected accessibility standard via CLI, ini, env, or default.
+    Resolve the selected accessibility standard tags via CLI, ini, env, or default.
 
     Priority:
     1. config.option.a11y_standard (programmatic override)
@@ -160,23 +204,61 @@ def _resolve_a11y_standard(config: pytest.Config) -> str:
     4. A11Y_STANDARD env var
     5. default wcag2aa
     """
+    raw_value: str | None = None
+
     configured_override = getattr(config.option, "a11y_standard", None)
     if configured_override:
-        return str(configured_override)
+        raw_value = str(configured_override)
+    else:
+        cli_standard = config.getoption("--a11y-standard")
+        if cli_standard:
+            raw_value = str(cli_standard)
+        else:
+            ini_standard = config.getini("a11y_standard")
+            if ini_standard:
+                raw_value = str(ini_standard)
+            else:
+                env_standard = os.environ.get("A11Y_STANDARD")
+                if env_standard:
+                    raw_value = str(env_standard)
 
-    cli_standard = config.getoption("--a11y-standard")
-    if cli_standard:
-        return str(cli_standard)
+    if not raw_value:
+        raw_value = _DEFAULT_A11Y_STANDARD
 
-    ini_standard = config.getini("a11y_standard")
-    if ini_standard:
-        return str(ini_standard)
+    return _parse_a11y_standard_value(raw_value)
 
-    env_standard = os.environ.get("A11Y_STANDARD")
-    if env_standard:
-        return str(env_standard)
 
-    return _DEFAULT_A11Y_STANDARD
+def _parse_a11y_standard_value(raw_value: str) -> list[str]:
+    """
+    Parse configured standard text into validated axe tag values.
+
+    Supports:
+    - single raw axe tag: ``wcag2aa``
+    - comma-separated raw tags: ``wcag21a,wcag21aa``
+    - friendly aliases: ``wcag2.1:aa``
+    """
+    normalized = raw_value.strip().lower()
+    if not normalized:
+        return [_DEFAULT_A11Y_STANDARD]
+
+    if normalized in _STANDARD_ALIASES:
+        return _STANDARD_ALIASES[normalized]
+
+    values = [value.strip().lower() for value in normalized.split(",") if value.strip()]
+    if not values:
+        return [_DEFAULT_A11Y_STANDARD]
+
+    invalid = [value for value in values if value not in _SUPPORTED_A11Y_TAGS]
+    if invalid:
+        supported = ", ".join(_SUPPORTED_A11Y_TAGS)
+        raise pytest.UsageError(
+            "Invalid value for --a11y-standard/a11y_standard: "
+            f"{', '.join(invalid)}. Supported tags: {supported}. "
+            "Supported aliases: wcag2.0:a, wcag2.0:aa, wcag2.0:aaa, "
+            "wcag2.1:a, wcag2.1:aa, wcag2.2:aa."
+        )
+
+    return values
 
 
 __all__ = [

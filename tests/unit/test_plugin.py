@@ -64,7 +64,7 @@ class TestPytestAddoption:
             if c.args and c.args[0] == "--a11y-standard"
         ]
         assert len(standard_calls) == 1
-        assert standard_calls[0].kwargs["type"] == str
+        assert standard_calls[0].kwargs["type"] is str
         assert standard_calls[0].kwargs["default"] == "wcag2aa"
         assert "Accessibility standard" in standard_calls[0].kwargs["help"]
 
@@ -78,7 +78,7 @@ class TestPytestAddoption:
             "a11y_standard",
             type="string",
             default="wcag2aa",
-            help="Accessibility standard to run a11y checks against (can also use --a11y-standard CLI option)",
+            help="Accessibility standard tag(s) to run against. Supports the same values as --a11y-standard.",
         )
 
 
@@ -165,11 +165,11 @@ class TestResolveA11yDir:
     @pytest.mark.parametrize(
         "cli_value,ini_value,env_value,expected",
         [
-            ("wcag2aa", "wcag2aaa", None, "wcag2aa"),
-            ("wcag2aa", "wcag2aaa", "wcag2a", "wcag2aa"),
-            ("", "wcag2aaa", "wcag2a", "wcag2aaa"),
-            ("", "", "section508", "section508"),
-            ("", "", "", "wcag2aa"),
+            ("wcag2aa", "wcag2aaa", None, ["wcag2aa"]),
+            ("wcag2aa", "wcag2aaa", "wcag2a", ["wcag2aa"]),
+            ("", "wcag2aaa", "wcag2a", ["wcag2aaa"]),
+            ("", "", "section508", ["section508"]),
+            ("", "", "", ["wcag2aa"]),
         ],
     )
     def test_resolve_a11y_standard_priority(
@@ -196,6 +196,29 @@ class TestResolveA11yDir:
         result = plugin._resolve_a11y_standard(config)
 
         assert result == expected
+
+
+def test_parse_a11y_standard_value_empty_default() -> None:
+    assert plugin._parse_a11y_standard_value("") == ["wcag2aa"]
+
+
+def test_parse_a11y_standard_value_aliases() -> None:
+    assert plugin._parse_a11y_standard_value("wcag2.1:aa") == ["wcag21a", "wcag21aa"]
+
+
+def test_parse_a11y_standard_value_comma_handling() -> None:
+    assert plugin._parse_a11y_standard_value("wcag2aa,,") == ["wcag2aa"]
+
+
+def test_parse_a11y_standard_value_blank_list_falls_back_to_default() -> None:
+    assert plugin._parse_a11y_standard_value(", ,") == ["wcag2aa"]
+
+
+def test_parse_a11y_standard_value_invalid_raises() -> None:
+    with pytest.raises(
+        pytest.UsageError, match="Invalid value for --a11y-standard/a11y_standard"
+    ):
+        plugin._parse_a11y_standard_value("invalid-tag")
 
 
 class TestPytestConfigure:
@@ -258,6 +281,30 @@ class TestPytestConfigure:
         assert config.a11y_standard == "wcag2aa"
 
         assert expected_session_dir.exists() is should_create
+
+    @patch("pytest_a11y.plugin.datetime")
+    @patch("pytest_a11y.plugin._resolve_a11y_dir")
+    def test_pytest_configure_unsupported_standard_raises(
+        self,
+        mock_resolve_a11y_dir: MagicMock,
+        mock_datetime: MagicMock,
+    ) -> None:
+        config = MagicMock()
+
+        config.getoption.side_effect = lambda name: (
+            False
+            if name == "--a11y"
+            else "invalid-standard"
+            if name == "--a11y-standard"
+            else None
+        )
+
+        mock_resolve_a11y_dir.return_value = Path("reports")
+
+        with pytest.raises(
+            pytest.UsageError, match="Unsupported accessibility standard"
+        ):
+            plugin.pytest_configure(config)
 
 
 class TestPluginExports:

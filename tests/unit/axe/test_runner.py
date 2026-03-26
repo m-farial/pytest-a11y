@@ -241,12 +241,18 @@ class TestRun:
         axe_instance.run.return_value = axe_results
         mock_axe.return_value = axe_instance
 
-        runner = AxeRunner(mock_driver, request=mock_request, standard="wcag2aaa")
+        runner = AxeRunner(
+            mock_driver,
+            request=mock_request,
+            tags=["wcag2a", "wcag2aa", "wcag2aaa"],
+        )
 
         runner.run()
 
         axe_instance.run.assert_called_once_with(
-            options={"runOnly": {"type": "tag", "values": ["wcag2aaa"]}}
+            options={
+                "runOnly": {"type": "tag", "values": ["wcag2a", "wcag2aa", "wcag2aaa"]}
+            }
         )
 
 
