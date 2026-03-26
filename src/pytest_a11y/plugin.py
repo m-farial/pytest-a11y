@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 
 _DEFAULT_A11Y_DIR = ".a11y_reports"
+_DEFAULT_A11Y_STANDARD = "wcag2aa"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -41,11 +42,28 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help=f"Directory to save a11y reports (default: {_DEFAULT_A11Y_DIR})",
     )
 
+    group.addoption(
+        "--a11y-standard",
+        type=str,
+        default=_DEFAULT_A11Y_STANDARD,
+        help=(
+            "Accessibility standard to run axes against (default: wcag2aa). "
+            "Supported values: wcag2a, wcag2aa, wcag2aaa, section508"
+        ),
+    )
+
     parser.addini(
         "a11y_reports",
         type="string",
         default=_DEFAULT_A11Y_DIR,
         help="Directory to save a11y reports (can also use --a11y-dir CLI option)",
+    )
+
+    parser.addini(
+        "a11y_standard",
+        type="string",
+        default=_DEFAULT_A11Y_STANDARD,
+        help="Accessibility standard to run a11y checks against (can also use --a11y-standard CLI option)",
     )
 
 
@@ -68,6 +86,8 @@ def pytest_configure(config: pytest.Config) -> None:
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         config.a11y_session_dir = resolved_a11y_dir / f"run_{timestamp}"  # type: ignore[attr-defined]
+
+    config.a11y_standard = _resolve_a11y_standard(config)  # type: ignore[attr-defined]
 
     if config.a11y_enabled:  # type: ignore[attr-defined]
         Path(config.a11y_session_dir).mkdir(  # type: ignore[attr-defined]
@@ -127,6 +147,36 @@ def _resolve_a11y_dir(config: pytest.Config) -> Path:
         return env_dir
 
     return Path(_DEFAULT_A11Y_DIR)
+
+
+def _resolve_a11y_standard(config: pytest.Config) -> str:
+    """
+    Resolve the selected accessibility standard via CLI, ini, env, or default.
+
+    Priority:
+    1. config.option.a11y_standard (programmatic override)
+    2. --a11y-standard CLI arg
+    3. a11y_standard ini value
+    4. A11Y_STANDARD env var
+    5. default wcag2aa
+    """
+    configured_override = getattr(config.option, "a11y_standard", None)
+    if configured_override:
+        return str(configured_override)
+
+    cli_standard = config.getoption("--a11y-standard")
+    if cli_standard:
+        return str(cli_standard)
+
+    ini_standard = config.getini("a11y_standard")
+    if ini_standard:
+        return str(ini_standard)
+
+    env_standard = os.environ.get("A11Y_STANDARD")
+    if env_standard:
+        return str(env_standard)
+
+    return _DEFAULT_A11Y_STANDARD
 
 
 __all__ = [

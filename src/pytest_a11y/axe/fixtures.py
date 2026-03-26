@@ -28,4 +28,5 @@ def axe(driver: WebDriver, request: pytest.FixtureRequest) -> AxeRunnerProtocol:
             driver.get("https://example.com")
             results = axe.run()  # will write reports if --a11y
     """
-    return AxeRunner(driver, request=request)
+    standard = getattr(request.config, "a11y_standard", None)
+    return AxeRunner(driver, request=request, standard=standard)

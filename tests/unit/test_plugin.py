@@ -45,7 +45,7 @@ class TestPytestAddoption:
             "Accessibility testing options",
         )
 
-        assert group.addoption.call_count == 2
+        assert group.addoption.call_count == 3
         group.addoption.assert_any_call(
             "--a11y",
             action="store_true",
@@ -58,12 +58,27 @@ class TestPytestAddoption:
             default=".a11y_reports",
             help="Directory to save a11y reports (default: .a11y_reports)",
         )
+        standard_calls = [
+            c
+            for c in group.addoption.call_args_list
+            if c.args and c.args[0] == "--a11y-standard"
+        ]
+        assert len(standard_calls) == 1
+        assert standard_calls[0].kwargs["type"] == str
+        assert standard_calls[0].kwargs["default"] == "wcag2aa"
+        assert "Accessibility standard" in standard_calls[0].kwargs["help"]
 
-        parser.addini.assert_called_once_with(
+        parser.addini.assert_any_call(
             "a11y_reports",
             type="string",
             default=".a11y_reports",
             help="Directory to save a11y reports (can also use --a11y-dir CLI option)",
+        )
+        parser.addini.assert_any_call(
+            "a11y_standard",
+            type="string",
+            default="wcag2aa",
+            help="Accessibility standard to run a11y checks against (can also use --a11y-standard CLI option)",
         )
 
 
@@ -147,6 +162,41 @@ class TestResolveA11yDir:
         """A real os.PathLike object returning bytes should return None."""
         assert plugin._coerce_pathlike(BytesPathLike()) is None
 
+    @pytest.mark.parametrize(
+        "cli_value,ini_value,env_value,expected",
+        [
+            ("wcag2aa", "wcag2aaa", None, "wcag2aa"),
+            ("wcag2aa", "wcag2aaa", "wcag2a", "wcag2aa"),
+            ("", "wcag2aaa", "wcag2a", "wcag2aaa"),
+            ("", "", "section508", "section508"),
+            ("", "", "", "wcag2aa"),
+        ],
+    )
+    def test_resolve_a11y_standard_priority(
+        self,
+        monkeypatch,
+        cli_value,
+        ini_value,
+        env_value,
+        expected,
+    ) -> None:
+        """Ensure a11y_standard is resolved with correct priority."""
+        config = MagicMock()
+        config.option = SimpleNamespace(a11y_standard=None)
+        config.getoption.side_effect = lambda name: (
+            cli_value if name == "--a11y-standard" else None
+        )
+        config.getini.return_value = ini_value
+
+        if env_value:
+            monkeypatch.setenv("A11Y_STANDARD", env_value)
+        else:
+            monkeypatch.delenv("A11Y_STANDARD", raising=False)
+
+        result = plugin._resolve_a11y_standard(config)
+
+        assert result == expected
+
 
 class TestPytestConfigure:
     """Tests for plugin configuration and session directory setup."""
@@ -173,7 +223,16 @@ class TestPytestConfigure:
     ) -> None:
         """Check session directory is configured and directory creation obeys --a11y."""
         config = MagicMock()
-        config.getoption.return_value = a11y_enabled
+        config.option = SimpleNamespace(a11y_standard=None)
+
+        def getoption(name):
+            if name == "--a11y":
+                return a11y_enabled
+            if name == "--a11y-standard":
+                return "wcag2aa"
+            return None
+
+        config.getoption.side_effect = getoption
 
         mock_datetime.now.return_value.strftime.return_value = "20260320_101500"
 
@@ -196,6 +255,7 @@ class TestPytestConfigure:
         assert config.a11y_enabled is a11y_enabled
         assert config.a11y_dir == expected_root
         assert config.a11y_session_dir == expected_session_dir
+        assert config.a11y_standard == "wcag2aa"
 
         assert expected_session_dir.exists() is should_create
 

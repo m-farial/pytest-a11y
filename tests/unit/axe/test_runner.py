@@ -226,6 +226,29 @@ class TestRun:
 
         mock_reports.assert_called_once()
 
+    @patch.object(runner_module, "_generate_reports")
+    @patch.object(runner_module, "Axe")
+    def test_run_passes_standard_option_to_axe(
+        self,
+        mock_axe: MagicMock,
+        mock_reports: MagicMock,
+        mock_driver: MagicMock,
+        mock_request: MagicMock,
+    ) -> None:
+        """A standard should be passed through as axe options."""
+        axe_instance = MagicMock()
+        axe_results = {"violations": []}
+        axe_instance.run.return_value = axe_results
+        mock_axe.return_value = axe_instance
+
+        runner = AxeRunner(mock_driver, request=mock_request, standard="wcag2aaa")
+
+        runner.run()
+
+        axe_instance.run.assert_called_once_with(
+            options={"runOnly": {"type": "tag", "values": ["wcag2aaa"]}}
+        )
+
 
 class TestCounts:
     """Tests for count helper methods."""
