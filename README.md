@@ -203,7 +203,7 @@ Only when `--a11y` is enabled does the plugin create the session directory and g
 
 ### a11y standard tags and alias support
 
-The `--a11y-standard` CLI option and `a11y_standard` `pytest.ini` value accept both canonical and aliased WCAG standard tags.
+The `--a11y-standard` or `--a11y-tags` CLI option and `a11y_standard` or `a11y_tags` `pytest.ini` value accept both canonical and aliased WCAG standard tags.
 
 Supported canonical values:
 

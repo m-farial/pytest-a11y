@@ -79,7 +79,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help=(
             "Accessibility standard tag(s) to run against. Accepts a single axe tag "
-            f"or a comma-separated list (supported tags: {', '.join(_SUPPORTED_A11Y_TAGS)}). "
+            f"(supported tags: {', '.join(_SUPPORTED_A11Y_TAGS)}). "
             "Also accepts aliases: wcag2.0:a, wcag2.0:aa, wcag2.0:aaa, "
             "wcag2.1:a, wcag2.1:aa, wcag2.2:aa. "
             "When omitted, no explicit standard is applied making axe-core default behavior active."
