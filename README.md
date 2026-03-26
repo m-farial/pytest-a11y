@@ -440,7 +440,9 @@ Supports multiple accessibility standards:
 Specify in config or CLI:
 
 ```bash
-pytest --a11y --a11y-standard wcag2aaa
+pytest --a11y --a11y-standard wcag2aa
+pytest --a11y --wcag-level AA
+pytest --a11y --a11y-tags wcag21a,wcag21aa,ACT,cat.forms
 ```
 
 ---
