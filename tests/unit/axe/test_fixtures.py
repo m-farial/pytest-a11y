@@ -31,8 +31,16 @@ class TestAxeFixture:
 
             result = axe.__wrapped__(mock_driver, mock_request)
 
-            assert result is expected_runner
-            mock_axe_runner.assert_called_once_with(mock_driver, request=mock_request)
+        assert result is expected_runner
+
+        # With `--a11y-standard` support, the runner gets the configured
+        # tags from request.config.a11y_tags.
+        expected_tags = getattr(mock_request.config, "a11y_tags", None)
+        mock_axe_runner.assert_called_once_with(
+            mock_driver,
+            request=mock_request,
+            tags=expected_tags,
+        )
 
     def test_axe_package_import_branch_covered_by_import_error(self) -> None:
         """Cover the import error branch in pytest_a11y.axe package."""

@@ -45,7 +45,7 @@ class TestPytestAddoption:
             "Accessibility testing options",
         )
 
-        assert group.addoption.call_count == 2
+        assert group.addoption.call_count == 5
         group.addoption.assert_any_call(
             "--a11y",
             action="store_true",
@@ -58,12 +58,27 @@ class TestPytestAddoption:
             default=".a11y_reports",
             help="Directory to save a11y reports (default: .a11y_reports)",
         )
+        standard_calls = [
+            c
+            for c in group.addoption.call_args_list
+            if c.args and c.args[0] == "--a11y-standard"
+        ]
+        assert len(standard_calls) == 1
+        assert standard_calls[0].kwargs["type"] is str
+        assert standard_calls[0].kwargs["default"] is None
+        assert "Accessibility standard" in standard_calls[0].kwargs["help"]
 
-        parser.addini.assert_called_once_with(
+        parser.addini.assert_any_call(
             "a11y_reports",
             type="string",
             default=".a11y_reports",
             help="Directory to save a11y reports (can also use --a11y-dir CLI option)",
+        )
+        parser.addini.assert_any_call(
+            "a11y_standard",
+            type="string",
+            default="",
+            help="Accessibility standard tag(s) to run against. Supports the same values as --a11y-standard.",
         )
 
 
@@ -148,6 +163,123 @@ class TestResolveA11yDir:
         assert plugin._coerce_pathlike(BytesPathLike()) is None
 
 
+def test_parse_tag_list_handles_whitespace_and_commas() -> None:
+    assert plugin._parse_tag_list("wcag2aa, , best-practice") == [
+        "wcag2aa",
+        "best-practice",
+    ]
+
+
+def test_parse_tag_list_empty_raises() -> None:
+    with pytest.raises(
+        pytest.UsageError, match="--a11y-tags must contain at least one non-empty tag"
+    ):
+        plugin._parse_tag_list(" , , ")
+
+
+def test_resolve_a11y_tags_with_a11y_standard_alias() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "wcag2.1:aa" if key == "--a11y-standard" else ""
+    )
+    config.getini.return_value = ""
+
+    result = plugin._resolve_a11y_tags(config)
+
+    assert result == ["wcag21a", "wcag21aa"]
+
+
+def test_resolve_a11y_tags_with_wcag_level_cli() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: "AA" if key == "--wcag-level" else ""
+    config.getini.return_value = ""
+
+    result = plugin._resolve_a11y_tags(config)
+
+    assert result == ["wcag2a", "wcag2aa"]
+
+
+def test_resolve_a11y_tags_unsupported_wcag_level_raises() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "invalid" if key == "--wcag-level" else ""
+    )
+    config.getini.return_value = ""
+
+    with pytest.raises(pytest.UsageError, match="Unsupported WCAG level"):
+        plugin._resolve_a11y_tags(config)
+
+
+def test_resolve_a11y_tags_unsupported_standard_raises() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "invalid-standard" if key == "--a11y-standard" else ""
+    )
+    config.getini.return_value = ""
+
+    with pytest.raises(
+        pytest.UsageError,
+        match="Invalid value for --a11y-standard/a11y_standard",
+    ):
+        plugin._resolve_a11y_tags(config)
+
+
+def test_resolve_a11y_tags_with_a11y_tags_cli() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "best-practice, wcag2a" if key == "--a11y-tags" else ""
+    )
+    config.getini.return_value = ""
+
+    result = plugin._resolve_a11y_tags(config)
+
+    assert result == ["best-practice", "wcag2a"]
+
+
+def test_resolve_a11y_tags_unsupported_standard_error_contains_aliases() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "invalid-standard" if key == "--a11y-standard" else ""
+    )
+    config.getini.return_value = ""
+
+    with pytest.raises(
+        pytest.UsageError,
+        match="Invalid value for --a11y-standard/a11y_standard",
+    ) as excinfo:
+        plugin._resolve_a11y_tags(config)
+
+    message = str(excinfo.value)
+
+    # The error message should be informative and mention supported values/aliases.
+    assert "--a11y-standard" in message
+    assert "supported" in message.lower()
+
+    # Ensure at least one known supported alias/canonical value is mentioned.
+    supported_aliases = ["wcag21a", "wcag21aa", "wcag2a", "wcag2aa", "best-practice"]
+    assert any(alias in message for alias in supported_aliases)
+def test_resolve_a11y_tags_falls_to_wcag_level() -> None:
+    config = MagicMock()
+    config.getoption.side_effect = lambda key: (
+        "" if key == "--a11y-tags" else "AA" if key == "--wcag-level" else ""
+    )
+    config.getini.return_value = ""
+
+    result = plugin._resolve_a11y_tags(config)
+
+    assert result == ["wcag2a", "wcag2aa"]
+
+
+def test_resolve_a11y_tags_all_blank_returns_none() -> None:
+    config = MagicMock()
+    config.getoption.return_value = ""
+    config.getini.return_value = ""
+
+    result = plugin._resolve_a11y_tags(config)
+
+    assert result is None
+
+
 class TestPytestConfigure:
     """Tests for plugin configuration and session directory setup."""
 
@@ -173,7 +305,16 @@ class TestPytestConfigure:
     ) -> None:
         """Check session directory is configured and directory creation obeys --a11y."""
         config = MagicMock()
-        config.getoption.return_value = a11y_enabled
+        config.option = SimpleNamespace(a11y_standard=None)
+
+        def getoption(name):
+            if name == "--a11y":
+                return a11y_enabled
+            if name == "--a11y-standard":
+                return "wcag2aa"
+            return None
+
+        config.getoption.side_effect = getoption
 
         mock_datetime.now.return_value.strftime.return_value = "20260320_101500"
 
@@ -196,8 +337,34 @@ class TestPytestConfigure:
         assert config.a11y_enabled is a11y_enabled
         assert config.a11y_dir == expected_root
         assert config.a11y_session_dir == expected_session_dir
+        assert config.a11y_tags == ["wcag2a", "wcag2aa"]
 
         assert expected_session_dir.exists() is should_create
+
+    @patch("pytest_a11y.plugin.datetime")
+    @patch("pytest_a11y.plugin._resolve_a11y_dir")
+    def test_pytest_configure_unsupported_standard_raises(
+        self,
+        mock_resolve_a11y_dir: MagicMock,
+        mock_datetime: MagicMock,
+    ) -> None:
+        config = MagicMock()
+
+        config.getoption.side_effect = lambda name: (
+            False
+            if name == "--a11y"
+            else "invalid-standard"
+            if name == "--a11y-standard"
+            else None
+        )
+
+        mock_resolve_a11y_dir.return_value = Path("reports")
+
+        with pytest.raises(
+            pytest.UsageError,
+            match="Invalid value for --a11y-standard/a11y_standard",
+        ):
+            plugin.pytest_configure(config)
 
 
 class TestPluginExports:

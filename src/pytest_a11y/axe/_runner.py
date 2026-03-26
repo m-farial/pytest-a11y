@@ -39,21 +39,27 @@ class AxeRunner:
     """
 
     def __init__(
-        self, driver: WebDriver, request: pytest.FixtureRequest | None = None
+        self,
+        driver: WebDriver,
+        request: pytest.FixtureRequest | None = None,
+        tags: list[str] | None = None,
     ) -> None:
         """
-        Initialize AxeRunner with a WebDriver instance and an optional
-        pytest `request`. When provided the `request` will be forwarded to
-        report generation so `axe.run()` can produce session-scoped reports
-        when `--a11y` is enabled.
+        Initialize AxeRunner with a WebDriver instance and optional pytest
+        `request` and accessibility standard tags.
+
+        When provided the `request` will be forwarded to report generation so
+        `axe.run()` can produce session-scoped reports when `--a11y` is enabled.
 
         Args:
             driver: Selenium WebDriver bound to the current browser context
             request: Optional pytest FixtureRequest forwarded from the fixture
+            tags: Optional axe tag list such as ["wcag21a", "wcag21aa"]
         """
         self._driver = driver
         self._axe = Axe(driver)
         self._request = request
+        self.tags = tags
 
     def inject(self) -> None:
         """
@@ -133,7 +139,17 @@ class AxeRunner:
             - Results are typed as AxeResults TypedDict
         """
         self._axe.inject()
-        axe_results = self._axe.run()
+
+        if self.tags:
+            options = {
+                "runOnly": {
+                    "type": "tag",
+                    "values": self.tags,
+                }
+            }
+            axe_results = self._axe.run(options=options)
+        else:
+            axe_results = self._axe.run()
 
         # Forward the pytest request (if any) so report generation can use
         # `request.config` / `request.node` instead of relying on global state.

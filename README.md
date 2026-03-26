@@ -62,6 +62,29 @@ def test_homepage_accessibility(
     assert_no_axe_violations(results)
 ```
 
+### 2.1 Configure Standards and Aliases
+
+`pytest-a11y` accepts both canonical and alias values for `--a11y-standard` / `a11y_standard`:
+
+- canonical: `wcag2a`, `wcag2aa`, `wcag2aaa`, `wcag21a`, `wcag21aa`, `wcag22aa`, `section508`
+- aliases: `wcag2.0:a`, `wcag2.0:aa`, `wcag2.0:aaa`, `wcag2.1:a`, `wcag2.1:aa`, `wcag2.2:aa`
+
+Example:
+
+```bash
+pytest tests/test_a11y.py --a11y --a11y-standard wcag2.1:aa -v
+```
+
+Invalid values raise `pytest.UsageError` and include supported options in the message.
+
+### 2.2 Configure custom axe tags
+
+You can also pass [raw axe tags](https://github.com/dequelabs/axe-core/blob/develop/doc/API.md#axe-core-tags) via `--a11y-tags` instead of a standard mapping:
+
+```bash
+pytest tests/test_a11y.py --a11y --a11y-tags best-practice,cat.forms -v
+```
+
 ### 3. Run Without Reports
 
 ```bash
@@ -177,6 +200,33 @@ When `pytest_configure` runs:
 3. `config.a11y_dir` is the root folder and `config.a11y_session_dir` is the specific run folder.
 
 Only when `--a11y` is enabled does the plugin create the session directory and generate reports.
+
+### a11y standard tags and alias support
+
+The `--a11y-standard` CLI option and `a11y_standard` `pytest.ini` value accept both canonical and aliased WCAG standard values. The `--a11y-tags` CLI option and `a11y_tags` `pytest.ini` value are passed through to axe as raw tags and do not apply any alias or standard mapping.
+
+Supported canonical values:
+
+- `wcag2a`
+- `wcag2aa`
+- `wcag2aaa`
+- `wcag21a`
+- `wcag21aa`
+- `wcag22aa`
+- `section508`
+
+Supported aliases:
+
+- `wcag2.0:a` → `wcag2a`
+- `wcag2.0:aa` → `wcag2a, wcag2aa`
+- `wcag2.0:aaa` → `wcag2a, wcag2aa, wcag2aaa`
+- `wcag2.1:a` → `wcag21a`
+- `wcag2.1:aa` → `wcag21a, wcag21aa`
+- `wcag2.2:aa` → `wcag2aa, wcag21aa, wcag22aa`
+
+When the value is invalid, pytest-a11y raises a `pytest.UsageError` with a clear message:
+
+- `Invalid value for --a11y-standard/a11y_standard '<value>'. Supported values: ...`
 
 ---
 
@@ -390,7 +440,9 @@ Supports multiple accessibility standards:
 Specify in config or CLI:
 
 ```bash
-pytest --a11y --a11y-standard wcag2aaa
+pytest --a11y --a11y-standard wcag2aa
+pytest --a11y --wcag-level AA
+pytest --a11y --a11y-tags wcag21a,wcag21aa,ACT,cat.forms
 ```
 
 ---
