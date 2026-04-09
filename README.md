@@ -4,6 +4,7 @@
 [![pytest](https://img.shields.io/badge/pytest-%3E%3D8.0-green.svg)](https://pytest.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Demo](https://img.shields.io/badge/demo-live-brightgreen)
+![Tests](https://github.com/m-farial/pytest-a11y/actions/workflows/tests.yml/badge.svg)
 
 **Automated accessibility testing for Selenium test suites using pytest and axe-core.**
 
