@@ -422,11 +422,11 @@
             <div class="header-meta">
                 <div class="header-meta-item">
                     <strong>URL:</strong>
-                    <a href="https://github.com/m-farial/pytest-a11y/blob/main/tests/integration/pages/bad.html" target="_blank" rel="noopener">pytest-a11y/tests/integration/pages/bad.html</a>
+                    <a href="https://github.com/m-farial/pytest-a11y/blob/main/tests/integration/pages/bad.html" target="_blank" rel="noopener">tests/integration/pages/bad.html</a>
                 </div>
                 <div class="header-meta-item">
                     <strong>Generated:</strong>
-                    2026-04-08 20:57:56
+                    2026-04-09 08:39:04
                 </div>
             </div>
             <div class="summary">
@@ -441,7 +441,7 @@
     </div>
 
     <div id="fullscreenModal" class="fullscreen">
-        <button class="fullscreen-close" onclick="closeFullscreen()">✕</button>
+        <button class="fullscreen-close" aria-label="Close fullscreen screenshot" onclick="closeFullscreen()">✕</button>
         <img id="fullscreenImage" src="data:," alt="Full size screenshot">
     </div>
 
@@ -484,7 +484,7 @@
                 `).join('');
 
                 violationElement.innerHTML = `
-                    <button class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)"aria-expanded="false">
+                    <button class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)" aria-expanded="false">
                         <div class="violation-info">
                             <div class="violation-name">
                                 <span class="toggle"></span>

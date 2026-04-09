@@ -623,7 +623,7 @@ pytest --a11y --wcag-level AA
 pytest --a11y --a11y-tags wcag21a,wcag21aa,ACT,cat.forms
 ```
 
-Or via `pytest.ini` (all supported keys shown):
+Or via `pytest.ini` (sample supported keys shown):
 
 ```ini
 [pytest]
