@@ -151,7 +151,7 @@ def pages() -> Pages:
     Provide file:// URLs for the integration HTML test pages.
 
     Returns:
-        Pages dataclass with URLs to clean, serious, critical, and bad pages
+        Pages dataclass with URLs to clean and bad pages
     """
     base = Path(__file__).parent / "pages"
     return Pages(

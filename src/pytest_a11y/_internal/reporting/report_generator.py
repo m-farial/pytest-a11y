@@ -175,7 +175,7 @@ class A11yViolationsReport:
     </div>
 
     <div id="fullscreenModal" class="fullscreen">
-        <button class="fullscreen-close" onclick="closeFullscreen()">✕</button>
+        <button class="fullscreen-close" aria-label="Close fullscreen screenshot" onclick="closeFullscreen()">✕</button>
         <img id="fullscreenImage" src="data:," alt="Full size screenshot">
     </div>
 
@@ -659,7 +659,7 @@ class A11yViolationsReport:
                 `).join('');
 
                 violationElement.innerHTML = `
-                    <button class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)"aria-expanded="false">
+                    <button class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)" aria-expanded="false">
                         <div class="violation-info">
                             <div class="violation-name">
                                 <span class="toggle"></span>
