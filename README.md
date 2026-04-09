@@ -341,8 +341,9 @@ Individual screenshots for each violation in `violation_screenshots/`:
 The `axe` fixture provides an accessibility checker bound to your WebDriver. Simply declare it as a parameter in your test function — no extra setup needed:
 
 ```python
-results = axe.run()
-# results is AxeResults - dict-like structure from axe-core
+def test_accessibility(axe):
+    results = axe.run()
+    # results is AxeResults - dict-like structure from axe-core
 ```
 
 **That's it.** No special fixture for reports, no fixture selection needed.
