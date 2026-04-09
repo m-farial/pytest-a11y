@@ -176,7 +176,7 @@ class A11yViolationsReport:
 
     <div id="fullscreenModal" class="fullscreen">
         <button class="fullscreen-close" onclick="closeFullscreen()">✕</button>
-        <img id="fullscreenImage" src="" alt="Full size screenshot">
+        <img id="fullscreenImage" src="data:," alt="Full size screenshot">
     </div>
 
     <script>
@@ -211,6 +211,9 @@ class A11yViolationsReport:
         .container {
             max-width: 1400px;
             margin: 0 auto;
+        }
+        #violationsContainer {
+            padding-left: 30px;
         }
 
         header {
@@ -261,6 +264,7 @@ class A11yViolationsReport:
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-top: 20px;
+            max-width: 300px;
         }
 
         .summary-card {
@@ -292,6 +296,9 @@ class A11yViolationsReport:
         }
 
         .violation-header {
+            width: 100%;
+            font: inherit;
+            border: none;
             padding: 20px;
             cursor: pointer;
             display: flex;
@@ -330,6 +337,7 @@ class A11yViolationsReport:
             font-size: 0.9em;
             color: #666;
             margin-top: 5px;
+            text-align: left;
         }
 
         .violation-tags {
@@ -337,6 +345,7 @@ class A11yViolationsReport:
             gap: 8px;
             margin-top: 10px;
             flex-wrap: wrap;
+            align-items: flex-start;
         }
 
         .tag {
@@ -650,7 +659,7 @@ class A11yViolationsReport:
                 `).join('');
 
                 violationElement.innerHTML = `
-                    <div class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)">
+                    <button class="violation-header ${impactClass}" onclick="toggleViolationDetails(this)"aria-expanded="false">
                         <div class="violation-info">
                             <div class="violation-name">
                                 <span class="toggle"></span>
@@ -661,7 +670,7 @@ class A11yViolationsReport:
                                 ${violation.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
                             </div>
                         </div>
-                    </div>
+                    </button>
                     <div class="violation-details">
                         <div class="details-content" style="grid-template-columns: ${hasScreenshot ? '1fr 1fr' : '1fr'};">
                             <div class="details-text">
@@ -706,7 +715,8 @@ class A11yViolationsReport:
         }
 
         function toggleViolationDetails(header) {
-            header.classList.toggle('expanded');
+            const isExpanded = header.classList.toggle('expanded');
+            header.setAttribute('aria-expanded', isExpanded);
             const details = header.nextElementSibling;
             details.classList.toggle('show');
         }
