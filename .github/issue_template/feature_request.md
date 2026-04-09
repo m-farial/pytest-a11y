@@ -5,7 +5,7 @@ about: Suggest an improvement
 title: "[FEATURE]"
 labels: enhancement
 assignees: ''
--------------
+---
 
 ## Feature description
 
