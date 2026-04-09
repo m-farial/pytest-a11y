@@ -12,6 +12,7 @@ import pytest_a11y.assertions as assertions_module
 from pytest_a11y.assertions import (
     _generate_reports,
     _nodeid_hash,
+    _page_slug_from_url,
     _safe_slug,
     _should_generate_reports,
     assert_no_axe_violations,
@@ -66,6 +67,20 @@ class TestHelpers:
         result = _nodeid_hash("nodeid", length=1)
 
         assert len(result) == 1
+
+    @pytest.mark.parametrize(
+        ("page_url", "expected"),
+        [
+            ("https://www.saucedemo.com/inventory", "saucedemo_inventory"),
+            ("https://example.com/", "example_home"),
+            ("https://www.example.co.uk/blog", "example_co_uk_blog"),
+        ],
+    )
+    def test_page_slug_from_url_normalizes_common_hosts_and_paths(
+        self, page_url: str, expected: str
+    ) -> None:
+        """Convert URLs into normalized page slugs for report filenames."""
+        assert _page_slug_from_url(page_url) == expected
 
 
 class TestShouldGenerateReports:
@@ -362,7 +377,7 @@ class TestGenerateReports:
         assert html_path.parent == session_dir
         assert json_path.parent == session_dir
         assert screenshot_dir == session_dir / "violation_screenshots"
-        assert "__gw1__" in html_path.name
+        assert "gw1_" in html_path.name
 
     def test_generate_reports_skips_screenshots_when_no_violations(
         self,

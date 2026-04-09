@@ -139,10 +139,10 @@ def test_homepage_accessibility(
 ) -> None:
     """Test that the homepage has no accessibility violations."""
     driver.get("https://www.saucedemo.com/")
-    
+
     # Run accessibility checks
     results = axe.run()
-    
+
     # Assert no violations found
     assert_no_axe_violations(results)
 ```
@@ -192,98 +192,29 @@ tests/test_a11y.py::test_homepage_accessibility PASSED
 ```
 
 Reports automatically generated in `.a11y_reports/run_YYYYMMDD_HHMMSS/`:
-- `test_homepage_accessibility__master__abc123d.html` - Interactive HTML report with screenshots
-- `test_homepage_accessibility__master__abc123d.json` - Machine-readable JSON report
+- `test_homepage_accessibility_saucedemo_home_abc123d.html` - Interactive HTML report with screenshots
+- `test_homepage_accessibility_saucedemo_home_abc123d.json` - Machine-readable JSON report
 - `violation_screenshots/` - Individual screenshots of each violation
+
+Report filenames now include a normalized page slug derived from the current URL (for example, `saucedemo_home`), while the stable hash suffix ensures uniqueness.
 
 ---
 
 ## Examples
 
-### Basic Test
+The full set of runnable examples is consolidated in [docs/quickstart.md](docs/quickstart.md).
 
-See [Quick Start → Step 3](#3-write-a-test) for a complete basic test example. The examples below build on that pattern.
+This includes:
 
-### Multiple Pages
+- simple accessibility assertions
+- critical-only checks
+- results inspection
+- viewport testing
+- dark mode testing
+- interaction flows
+- parameterized multiple-page tests
 
-```python
-def test_all_pages(driver: WebDriver, axe: AxeRunnerProtocol) -> None:
-    """Test multiple pages for accessibility."""
-    pages = [
-        "https://www.saucedemo.com/",
-        "https://www.saucedemo.com/inventory.html",
-        "https://www.saucedemo.com/cart.html",
-    ]
-    
-    for page_url in pages:
-        driver.get(page_url)
-        results = axe.run()
-        assert_no_axe_violations(results)
-```
-
-Each page gets its own report (if `--a11y` enabled).
-
-### Lenient Checking
-
-```python
-from pytest_a11y import assert_no_critical_violations
-
-def test_allow_minor_issues(driver: WebDriver, axe: AxeRunnerProtocol) -> None:
-    """Allow minor issues, fail on critical."""
-    driver.get("https://www.saucedemo.com/")
-    results = axe.run()
-    assert_no_critical_violations(results)  # Only critical failures
-```
-
-Useful when fixing accessibility incrementally.
-
-### Inspecting Violations
-
-```python
-def test_with_inspection(driver: WebDriver, axe: AxeRunnerProtocol) -> None:
-    """Inspect violations before asserting."""
-    driver.get("https://www.saucedemo.com/")
-    
-    axe_results = axe.run()
-    results = Results.from_axe(axe_results)
-    
-    # Inspect first
-    if results.has_violations:
-        print(f"\nFound {results.violation_count} violations:")
-        for violation in results.violations:
-            print(f"  {violation.id} ({violation.impact})")
-            print(f"    {violation.description}")
-            print(f"    Affected nodes: {len(violation.nodes)}")
-    
-    # Then assert
-    assert_results_no_violations(results)
-```
-
-### Severity Filtering
-
-```python
-def test_severity_report(driver: WebDriver, axe: AxeRunnerProtocol) -> None:
-    """Report violations by severity."""
-    driver.get("https://www.saucedemo.com/")
-    
-    axe_results = axe.run()
-    results = Results.from_axe(axe_results)
-    
-    # Group by severity
-    by_severity = {}
-    for violation in results.violations:
-        severity = violation.impact or "unknown"
-        by_severity.setdefault(severity, []).append(violation)
-    
-    # Log summary
-    for severity in ["critical", "serious", "moderate", "minor"]:
-        count = len(by_severity.get(severity, []))
-        print(f"{severity}: {count}")
-    
-    # Fail on critical
-    critical = by_severity.get("critical", [])
-    assert len(critical) == 0, f"Found {len(critical)} critical violations"
-```
+Use `pytest --a11y` to generate HTML and JSON reports for each example.
 
 ---
 

@@ -290,6 +290,7 @@ def capture_violation_screenshots(
     axe_results: AxeResults,
     output_dir: Path | str,
     *,
+    filename_suffix: str = "",
     scroll_into_view: bool = True,
     max_nodes_per_violation: int | None = 10,
 ) -> dict[str, str]:
@@ -308,6 +309,7 @@ def capture_violation_screenshots(
         driver: Selenium WebDriver instance
         axe_results: Complete AxeResults from axe.run()
         output_dir: Directory to save screenshot files
+        filename_suffix: Optional suffix appended to screenshot filenames
         scroll_into_view: Whether to scroll elements into view (default: True)
         max_nodes_per_violation: Limit elements marked per violation (default: 10)
 
@@ -398,8 +400,9 @@ def capture_violation_screenshots(
         )
 
         # Capture screenshot
+        suffix = f"_{filename_suffix}" if filename_suffix else ""
         screenshot_path = (
-            output_dir / f"{violation_impact}_{violation_id}_{v_index}.png"
+            output_dir / f"{violation_impact}_{violation_id}_{v_index}{suffix}.png"
         )
         try:
             saved_ok = driver.save_screenshot(str(screenshot_path))

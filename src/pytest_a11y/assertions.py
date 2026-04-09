@@ -47,6 +47,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import pytest
 
@@ -87,13 +88,14 @@ def _should_generate_reports() -> bool:
     return False
 
 
-def _safe_slug(text: str, max_len: int = 10) -> str:
+def _safe_slug(text: str, max_len: int | None = None) -> str:
     """
     Convert a string into a filesystem-friendly slug.
 
     Args:
         text: Input text (typically pytest test name)
-        max_len: Maximum length of the output slug
+        max_len: Optional maximum length of the output slug. If None,
+            the full slug is returned.
 
     Returns:
         Filesystem-safe slug string
@@ -104,7 +106,9 @@ def _safe_slug(text: str, max_len: int = 10) -> str:
             keep.append(ch)
         else:
             keep.append("_")
-    slug: str = "".join(keep)
+    slug: str = "".join(keep).strip("_")
+    if max_len is None:
+        return slug or "a11y"
     return slug[:max_len].strip("_") or "a11y"
 
 
@@ -124,6 +128,51 @@ def _nodeid_hash(nodeid: str, length: int = 10) -> str:
         nodeid.encode("utf-8"),
         digest_size=digest_size,
     ).hexdigest()[:length]
+
+
+def _page_slug_from_url(page_url: str) -> str:
+    """
+    Convert a page URL into a filesystem-safe slug.
+
+    Args:
+        page_url: URL of the analyzed page
+
+    Returns:
+        A slug derived from the hostname and path.
+    """
+    parsed = urlparse(page_url)
+    hostname = parsed.netloc.lower().split("@")[-1]
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+
+    common_tlds = {
+        "com",
+        "net",
+        "org",
+        "io",
+        "app",
+        "dev",
+        "ai",
+        "info",
+        "tech",
+        "site",
+        "xyz",
+        "me",
+        "co",
+    }
+    host_parts = hostname.split(".") if hostname else []
+    if len(host_parts) > 1 and host_parts[-1] in common_tlds:
+        host_parts = host_parts[:-1]
+    hostname = "_".join(host_parts)
+
+    path = parsed.path or "/"
+    if path in ("/", ""):
+        page_part = "home"
+    else:
+        page_part = "_".join([segment for segment in path.split("/") if segment])
+
+    raw_slug = f"{hostname}_{page_part}" if hostname else page_part
+    return _safe_slug(raw_slug) or "page"
 
 
 def _generate_reports(
@@ -191,12 +240,26 @@ def _generate_reports(
             if request and getattr(request, "node", None)
             else "unknown"
         )
-        name: str = _safe_slug(
+        raw_name = (
+            request.node.nodeid.split("::")[-1].split("[", 1)[0]
+            if request and getattr(request, "node", None)
+            else "test"
+        )
+        raw_name = (
             request.node.name if request and getattr(request, "node", None) else "test"
         )
+        name: str = _safe_slug(raw_name)
+        page_url = getattr(driver, "current_url", "about:blank")
+        page_slug = _page_slug_from_url(page_url)
         h: str = _nodeid_hash(nodeid)
 
-        base: str = f"{name}__{worker_id}__{h}"
+        base_parts = [name]
+        if "[" not in raw_name and page_slug:
+            base_parts.append(page_slug)
+        if worker_id != "master":
+            base_parts.append(worker_id)
+        base_parts.append(h)
+        base: str = "_".join(base_parts)
         html_path: Path = session_dir / f"{base}.html"
         json_path: Path = session_dir / f"{base}.json"
         screenshot_dir: Path = session_dir / "violation_screenshots"
@@ -207,6 +270,7 @@ def _generate_reports(
                 driver=driver,
                 axe_results=axe_results,
                 output_dir=screenshot_dir,
+                filename_suffix=h,
             )
 
         generate_a11y_report(

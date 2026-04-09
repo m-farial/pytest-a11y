@@ -413,41 +413,13 @@ def run_a11y(
             )
             raise
 
-        # Always write deterministic artifact files for the test run so the
-        # test can rely on exact, current files rather than racey "latest" files.
+        # Let the plugin runtime name reports and reuse its generated artifacts.
         session_dir: Path = request.config.a11y_session_dir  # type: ignore[attr-defined]
         screenshot_dir = session_dir / "violation_screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
 
-        # Deterministic filenames (include page key to aid debugging)
-        safe_name = re.sub(
-            r"[^A-Za-z0-9_.-]+", "_", f"{request.node.name}__{page_key}"
-        ).strip("_")
-        html_path = session_dir / f"{safe_name}.html"
-        json_path = session_dir / f"{safe_name}.json"
-
-        # Directly call reporting writers (raise on error so tests fail noisily)
-        from pytest_a11y._internal.reporting.html_report import generate_a11y_report
-        from pytest_a11y._internal.reporting.json_report import write_a11y_json_report
-        from pytest_a11y._internal.screenshots import capture_violation_screenshots
-
-        # Capture violation screenshots when present
-        if axe_results.get("violations"):
-            capture_violation_screenshots(
-                driver=driver, axe_results=axe_results, output_dir=screenshot_dir
-            )
-
-        generate_a11y_report(
-            axe_results=axe_results,
-            page_url=url,
-            output_path=html_path,
-            screenshot_dir=screenshot_dir,
-        )
-        write_a11y_json_report(
-            axe_results=axe_results,
-            page_url=url,
-            output_path=json_path,
-        )
+        html_path = _latest_file(session_dir, "*.html")
+        json_path = _latest_file(session_dir, "*.json")
 
         return A11yArtifacts(
             axe=axe_results,
