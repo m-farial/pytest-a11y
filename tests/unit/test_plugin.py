@@ -258,6 +258,8 @@ def test_resolve_a11y_tags_unsupported_standard_error_contains_aliases() -> None
     # Ensure at least one known supported alias/canonical value is mentioned.
     supported_aliases = ["wcag21a", "wcag21aa", "wcag2a", "wcag2aa", "best-practice"]
     assert any(alias in message for alias in supported_aliases)
+
+
 def test_resolve_a11y_tags_falls_to_wcag_level() -> None:
     config = MagicMock()
     config.getoption.side_effect = lambda key: (
