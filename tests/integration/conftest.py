@@ -151,9 +151,9 @@ def pages() -> Pages:
     Provide file:// URLs for the integration HTML test pages.
 
     Returns:
-        Pages dataclass with URLs to clean, serious, critical, and bad pages
+        Pages dataclass with URLs to clean and bad pages
     """
-    base = Path(__file__).parent / "integration" / "pages"
+    base = Path(__file__).parent / "pages"
     return Pages(
         clean=(base / "clean.html").resolve().as_uri(),
         bad=(base / "bad.html").resolve().as_uri(),
@@ -420,7 +420,9 @@ def run_a11y(
         screenshot_dir.mkdir(parents=True, exist_ok=True)
 
         # Deterministic filenames (include page key to aid debugging)
-        safe_name = f"{request.node.name}__{page_key}"
+        safe_name = re.sub(
+            r"[^A-Za-z0-9_.-]+", "_", f"{request.node.name}__{page_key}"
+        ).strip("_")
         html_path = session_dir / f"{safe_name}.html"
         json_path = session_dir / f"{safe_name}.json"
 

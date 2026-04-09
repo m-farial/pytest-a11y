@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>pytest-a11y Demo</title>
+
+<style>
+body{
+  font-family:Arial, sans-serif;
+  max-width:900px;
+  margin:auto;
+  padding:40px;
+  line-height:1.6;
+}
+
+.hero{
+  border:1px solid #eee;
+  padding:30px;
+  border-radius:12px;
+  margin-bottom:30px;
+}
+
+.buttons a{
+  display:inline-block;
+  margin-right:10px;
+  padding:10px 16px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  text-decoration:none;
+}
+
+.gallery{
+  margin-top:30px;
+}
+
+.card{
+  border:1px solid #eee;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+
+img{
+  width:100%;
+  border-radius:10px;
+  border:1px solid #eee;
+}
+</style>
+</head>
+
+<body>
+
+<div class="hero">
+
+<h1>pytest-a11y Demo</h1>
+
+<p>
+Automated accessibility testing for Selenium test suites using
+<b>pytest</b> and <b>axe-core</b>.
+</p>
+
+<div class="buttons">
+<a href="sample-report.html">View Sample Report</a>
+<a href="https://github.com/m-farial/pytest-a11y">GitHub Repo</a>
+<a href="https://github.com/m-farial/sel-py-template">sel-py-template</a>
+</div>
+
+</div>
+
+<h2>Example Accessibility Report</h2>
+
+<div class="gallery">
+
+<div class="card">
+<h3>Accessibility Scan Demo</h3>
+<img
+  src="assets/sample_a11y_report.gif"
+  alt="Animated demo showing pytest-a11y generating an accessibility report from a sample page."
+>
+</div>
+
+<div class="card">
+<h3>Detailed Violation Report</h3>
+<img
+  src="assets/sample_report_details.png"
+  alt="Screenshot of the pytest-a11y report showing violation details, severity, and affected elements."
+>
+</div>
+
+<div class="card">
+<h3>Artifact Structure</h3>
+<img
+  src="assets/a11y_report_structure.png"
+  alt="Diagram of the pytest-a11y artifact folder structure, including reports and violation screenshots."
+>
+</div>
+
+</div>
+
+<h2>How it fits into the system</h2>
+
+<pre>
+sel-py-template
+     ↓
+pytest
+     ↓
+pytest-a11y plugin
+     ↓
+axe-core scan
+     ↓
+HTML + JSON reports + screenshots
+</pre>
+
+</body>
+</html>

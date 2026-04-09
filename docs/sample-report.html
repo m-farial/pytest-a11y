@@ -1,200 +1,11 @@
-"""
-HTML report generation for a11y violations.
-
-Generates interactive, clickable HTML reports for accessibility violations
-with support for per-violation screenshots and detailed node information.
-"""
-
-from __future__ import annotations
-
-import json
-from datetime import datetime
-from html import escape
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from pytest_a11y.types import Node
-
-
-# ============================================================================
-# Report generation
-# ============================================================================
-
-
-class A11yViolationsReport:
-    """
-    Generates interactive HTML report for accessibility violations.
-
-    Creates a standalone HTML file with clickable violation cards,
-    detailed node information, and optional per-violation screenshots.
-    """
-
-    def __init__(self, output_path: str | Path, page_url: str) -> None:
-        """
-        Initialize report generator.
-
-        Args:
-            output_path: File path where HTML report will be written
-            page_url: URL of the page that was analyzed
-        """
-        self.output_path = (
-            Path(output_path) if isinstance(output_path, str) else output_path
-        )
-        self.page_url = page_url
-        self.violations: list[dict[str, Any]] = []
-
-    def add_violation(
-        self,
-        name: str,
-        summary: str,
-        help_text: str,
-        help_url: str,
-        nodes: list[Node],
-        tags: list[str],
-        screenshot: str | None = None,
-    ) -> None:
-        """
-        Add a violation to the report.
-
-        Args:
-            name: Violation rule ID (e.g., 'aria-allowed-role')
-            summary: Formatted summary (e.g., '[CRITICAL] Description (rule: id, nodes: 5)')
-            help: Explanation of the issue
-            help_url: URL to detailed documentation
-            nodes: List of affected Node objects
-            tags: Categorization tags
-            screenshot: Path or URL to violation screenshot (optional)
-        """
-        violation_data = {
-            "name": name,
-            "summary": summary,
-            "help": help_text,
-            "help_url": help_url,
-            "nodes": [
-                {
-                    "target": node.selector,
-                    "html": node.html,
-                    "failureSummary": node.failure_summary,
-                    "impact": node.impact,
-                }
-                for node in nodes
-            ],
-            "tags": tags,
-            "screenshot": screenshot or "",
-        }
-        self.violations.append(violation_data)
-
-    def generate(self) -> None:
-        """
-        Generate the interactive HTML report file.
-
-        Creates a standalone HTML file with all violations as clickable cards,
-        detailed node information, screenshots (if available), and full interactivity.
-
-        Raises:
-            IOError: If file cannot be written to output_path
-        """
-        self.output_path.parent.mkdir(parents=True, exist_ok=True)
-        # ========================================================================
-        # SORT VIOLATIONS BY SEVERITY
-        # ========================================================================
-        # Define severity order mapping
-        severity_order = {
-            "critical": 0,
-            "serious": 1,
-            "moderate": 2,
-            "minor": 3,
-            "unknown": 4,
-        }
-
-        # Sort violations by extracting impact level from summary and ordering by severity
-        sorted_violations = sorted(
-            self.violations,
-            key=lambda v: severity_order.get(
-                v["summary"].split("[")[1].split("]")[0].lower()
-                if "[" in v["summary"] and "]" in v["summary"]
-                else "unknown",
-                4,
-            ),
-        )
-        # Convert violations to JSON for embedding in HTML
-        violations_json = json.dumps(sorted_violations)
-
-        html_content = self._render_html(violations_json)
-
-        with open(self.output_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
-
-    def _render_html(self, violations_json: str) -> str:
-        """
-        Render complete HTML document with embedded JavaScript.
-
-        Creates a self-contained HTML file with all CSS and JavaScript
-        necessary to display and interact with the report.
-
-        Args:
-            violations_json: JSON string of violations data
-
-        Returns:
-            Complete HTML document string
-        """
-        return f"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A11y Violations Report</title>
     <style>
-        {self._render_css()}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>A11y Violations Report</h1>
-            <div class="header-meta">
-                <div class="header-meta-item">
-                    <strong>URL:</strong>
-                    <a href="{escape(self.page_url)}" target="_blank" rel="noopener">{escape(self.page_url)}</a>
-                </div>
-                <div class="header-meta-item">
-                    <strong>Generated:</strong>
-                    {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-                </div>
-            </div>
-            <div class="summary">
-                <div class="summary-card">
-                    <strong>Total Violations</strong>
-                    <div class="value" id="totalViolations">0</div>
-                </div>
-            </div>
-        </header>
-
-        <div id="violationsContainer"></div>
-    </div>
-
-    <div id="fullscreenModal" class="fullscreen">
-        <button class="fullscreen-close" aria-label="Close fullscreen screenshot" onclick="closeFullscreen()">✕</button>
-        <img id="fullscreenImage" src="data:," alt="Full size screenshot">
-    </div>
-
-    <script>
-        {self._render_javascript(violations_json)}
-    </script>
-</body>
-</html>
-"""
-
-    @staticmethod
-    def _render_css() -> str:
-        """
-        Render CSS styles for report.
-
-        Returns:
-            CSS stylesheet string for the HTML report
-        """
-        return """
+        
         * {
             margin: 0;
             padding: 0;
@@ -601,28 +412,42 @@ class A11yViolationsReport:
                 flex-direction: column;
             }
         }
-        """
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>A11y Violations Report</h1>
+            <div class="header-meta">
+                <div class="header-meta-item">
+                    <strong>URL:</strong>
+                    <a href="https://github.com/m-farial/pytest-a11y/blob/main/tests/integration/pages/bad.html" target="_blank" rel="noopener">tests/integration/pages/bad.html</a>
+                </div>
+                <div class="header-meta-item">
+                    <strong>Generated:</strong>
+                    2026-04-09 08:39:04
+                </div>
+            </div>
+            <div class="summary">
+                <div class="summary-card">
+                    <strong>Total Violations</strong>
+                    <div class="value" id="totalViolations">0</div>
+                </div>
+            </div>
+        </header>
 
-    @staticmethod
-    def _render_javascript(violations_json: str) -> str:
-        """
-        Render JavaScript for interactive report functionality.
+        <div id="violationsContainer"></div>
+    </div>
 
-        Provides rendering logic, event handlers, and HTML escaping.
+    <div id="fullscreenModal" class="fullscreen">
+        <button class="fullscreen-close" aria-label="Close fullscreen screenshot" onclick="closeFullscreen()">✕</button>
+        <img id="fullscreenImage" src="data:," alt="Full size screenshot">
+    </div>
 
-        Args:
-            violations_json: JSON string of violations data
-
-        Returns:
-            JavaScript code string
-        """
-        # Note: Using regular string concatenation to avoid f-string complexity
-        # with nested template literals in JavaScript
-        javascript = (
-            """
-        const violations = """
-            + violations_json
-            + r""";
+    <script>
+        
+        const violations = [{"name": "image-alt", "summary": "[CRITICAL] Ensures <img> elements have alternate text or a role of none or presentation (rule: image-alt, nodes: 1)", "help": "Images must have alternate text", "help_url": "https://dequeuniversity.com/rules/axe/3.1/image-alt?application=axeAPI", "nodes": [{"target": "img", "html": "<img src=\"banner.jpg\">", "failureSummary": "Fix any of the following:\n  Element does not have an alt attribute\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute or the title attribute is empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\"", "impact": "critical"}], "tags": ["cat.text-alternatives", "wcag2a", "wcag111", "section508", "section508.22.a"], "screenshot": "violation_screenshots/critical_image-alt_4.png"}, {"name": "label", "summary": "[CRITICAL] Ensures every form element has a label (rule: label, nodes: 3)", "help": "Form elements must have labels", "help_url": "https://dequeuniversity.com/rules/axe/3.1/label?application=axeAPI", "nodes": [{"target": "input[type=\"text\"]", "html": "<input type=\"text\" placeholder=\"Your Name\">", "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty", "impact": "critical"}, {"target": "input[type=\"email\"]", "html": "<input type=\"email\" placeholder=\"Your Email\">", "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty", "impact": "critical"}, {"target": "textarea", "html": "<textarea rows=\"5\"></textarea>", "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Form element does not have an implicit (wrapped) <label>\n  Form element does not have an explicit <label>\n  Element has no title attribute or the title attribute is empty", "impact": "critical"}], "tags": ["cat.forms", "wcag2a", "wcag332", "wcag131", "section508", "section508.22.n"], "screenshot": "violation_screenshots/critical_label_5.png"}, {"name": "color-contrast", "summary": "[SERIOUS] Ensures the contrast between foreground and background colors meets WCAG 2 AA contrast ratio thresholds (rule: color-contrast, nodes: 2)", "help": "Elements must have sufficient color contrast", "help_url": "https://dequeuniversity.com/rules/axe/3.1/color-contrast?application=axeAPI", "nodes": [{"target": "button", "html": "<button type=\"submit\">Submit</button>", "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.97 (foreground color: #ffffff, background color: #007bff, font size: 10.0pt, font weight: normal). Expected contrast ratio of 4.5:1", "impact": "serious"}, {"target": "p", "html": "<p class=\"low-contrast\">Terms and conditions apply to all users of this site.</p>", "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.84 (foreground color: #999999, background color: #ffffff, font size: 9.0pt, font weight: normal). Expected contrast ratio of 4.5:1", "impact": "serious"}], "tags": ["cat.color", "wcag2aa", "wcag143"], "screenshot": "violation_screenshots/serious_color-contrast_2.png"}, {"name": "link-name", "summary": "[SERIOUS] Ensures links have discernible text (rule: link-name, nodes: 2)", "help": "Links must have discernible text", "help_url": "https://dequeuniversity.com/rules/axe/3.1/link-name?application=axeAPI", "nodes": [{"target": "a[href$=\"privacy\"]", "html": "<a href=\"/privacy\"></a>", "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\"", "impact": "serious"}, {"target": "a[href$=\"terms\"]", "html": "<a href=\"/terms\"></a>", "failureSummary": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element's default semantics were not overridden with role=\"presentation\"\n  Element's default semantics were not overridden with role=\"none\"", "impact": "serious"}], "tags": ["cat.name-role-value", "wcag2a", "wcag412", "wcag244", "section508", "section508.22.a"], "screenshot": "violation_screenshots/serious_link-name_7.png"}, {"name": "heading-order", "summary": "[MODERATE] Ensures the order of headings is semantically correct (rule: heading-order, nodes: 1)", "help": "Heading levels should only increase by one", "help_url": "https://dequeuniversity.com/rules/axe/3.1/heading-order?application=axeAPI", "nodes": [{"target": "h3", "html": "<h3>Get In Touch</h3>", "failureSummary": "Fix any of the following:\n  Heading order invalid", "impact": "moderate"}], "tags": ["cat.semantics", "best-practice"], "screenshot": "violation_screenshots/moderate_heading-order_3.png"}, {"name": "landmark-one-main", "summary": "[MODERATE] Ensures the page has only one main landmark and each iframe in the page has at most one main landmark (rule: landmark-one-main, nodes: 1)", "help": "Page must have one main landmark", "help_url": "https://dequeuniversity.com/rules/axe/3.1/landmark-one-main?application=axeAPI", "nodes": [{"target": "html", "html": "<html lang=\"en\">", "failureSummary": "Fix all of the following:\n  Page does not have a main landmark", "impact": "moderate"}], "tags": ["cat.semantics", "best-practice"], "screenshot": "violation_screenshots/moderate_landmark-one-main_6.png"}, {"name": "region", "summary": "[MODERATE] Ensures all page content is contained by landmarks (rule: region, nodes: 1)", "help": "All page content must be contained by landmarks", "help_url": "https://dequeuniversity.com/rules/axe/3.1/region?application=axeAPI", "nodes": [{"target": "html", "html": "<html lang=\"en\">", "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks", "impact": "moderate"}], "tags": ["cat.keyboard", "best-practice"], "screenshot": "violation_screenshots/moderate_region_8.png"}, {"name": "aria-allowed-role", "summary": "[MINOR] Ensures role attribute has an appropriate value for the element (rule: aria-allowed-role, nodes: 1)", "help": "ARIA role must be appropriate for the element", "help_url": "https://dequeuniversity.com/rules/axe/3.1/aria-allowed-role?application=axeAPI", "nodes": [{"target": "label", "html": "<label for=\"password\" role=\"button\">Password</label>", "failureSummary": "Fix any of the following:\n  role button  is not allowed for given element", "impact": "minor"}], "tags": ["cat.aria", "best-practice"], "screenshot": "violation_screenshots/minor_aria-allowed-role_1.png"}];
 
         function renderViolations() {
             const container = document.getElementById('violationsContainer');
@@ -751,6 +576,7 @@ class A11yViolationsReport:
                 closeFullscreen();
             }
         });
-        """
-        )
-        return javascript
+        
+    </script>
+</body>
+</html>
