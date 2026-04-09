@@ -172,7 +172,7 @@ def _page_slug_from_url(page_url: str) -> str:
         page_part = "_".join([segment for segment in path.split("/") if segment])
 
     raw_slug = f"{hostname}_{page_part}" if hostname else page_part
-    return _safe_slug(raw_slug) or "page"
+    return _safe_slug(raw_slug)
 
 
 def _generate_reports(
