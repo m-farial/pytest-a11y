@@ -262,7 +262,7 @@ pytest --a11y
 
 ### Run with a specific standard
 
-See the full list of supported standards and aliases in [Configuration → Accessibility Standards](#accessibility-standards)
+See the full list of supported standards and aliases in the configuration documentation.
 
 ```bash
 pytest --a11y --a11y-standard wcag2aaa

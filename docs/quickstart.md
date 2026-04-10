@@ -9,7 +9,7 @@ Get from zero to your first accessibility test in minutes.
 Before you begin, make sure you have:
 
 - Python 3.10+
-- `pytest` 8.0+ installed
+- `pytest` 9.0+ installed
 - `selenium` installed in your environment
 - a browser driver available on `PATH` (for example, ChromeDriver or GeckoDriver)
 
@@ -99,8 +99,8 @@ When run with `--a11y`, reports are written to:
 ```
 .a11y_reports/run_YYYYMMDD_HHMMSS/
 ├── violation_screenshots/
-├── test_homepage_accessibility__master__abc123d.html
-└── test_homepage_accessibility__master__abc123d.json
+├── test_homepage_accessibility_saucedemo_home_abc123d.html
+└── test_homepage_accessibility_saucedemo_home_abc123d.json
 ```
 
 Open the `.html` file in your browser to view the full interactive report.
@@ -109,8 +109,8 @@ Open the `.html` file in your browser to view the full interactive report.
 
 ## Next Steps
 
-- [README](README.md) — full documentation, configuration options, and CI integration
+- [README](../README.md) — full documentation, configuration options, and CI integration
 - [docs/api-reference.md](api-reference.md) — available assertions and fixtures
 - [docs/usage.md](usage.md) — more runnable examples and patterns
-- [CHANGELOG](CHANGELOG.md) — release history
+- [CHANGELOG](../CHANGELOG.md) — release history
 - [Deque demo site](https://dequeuniversity.com/demo/mars) — a page with intentional violations to test against
