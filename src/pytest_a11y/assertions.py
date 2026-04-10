@@ -112,6 +112,49 @@ def _safe_slug(text: str, max_len: int | None = None) -> str:
     return slug[:max_len].strip("_") or "a11y"
 
 
+def _report_output_paths(request: Any, driver: Any) -> tuple[Path, Path, Path, str]:
+    """
+    Compute deterministic output paths for HTML, JSON, screenshots, and suffix.
+
+    Args:
+        request: pytest request object containing node and config state.
+        driver: Selenium WebDriver instance with a current_url property.
+
+    Returns:
+        Tuple containing (html_path, json_path, screenshot_dir, filename_suffix).
+    """
+    config = request.config if request is not None else getattr(pytest, "config", None)
+    if not config or not hasattr(config, "a11y_session_dir"):
+        raise RuntimeError("Missing a11y_session_dir in pytest config")
+
+    session_dir: Path = Path(config.a11y_session_dir)
+    worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    nodeid: str = (
+        request.node.nodeid if request and getattr(request, "node", None) else "unknown"
+    )
+    raw_name: str = (
+        request.node.name if request and getattr(request, "node", None) else "test"
+    )
+    name: str = _safe_slug(raw_name)
+    page_url = getattr(driver, "current_url", "about:blank")
+    page_slug = _page_slug_from_url(page_url)
+    suffix: str = _nodeid_hash(nodeid)
+
+    base_parts = [name]
+    if "[" not in raw_name and page_slug:
+        base_parts.append(page_slug)
+    if worker_id != "master":
+        base_parts.append(worker_id)
+    base_parts.append(suffix)
+    base: str = "_".join(base_parts)
+
+    html_path: Path = session_dir / f"{base}.html"
+    json_path: Path = session_dir / f"{base}.json"
+    screenshot_dir: Path = session_dir / "violation_screenshots"
+
+    return html_path, json_path, screenshot_dir, suffix
+
+
 def _nodeid_hash(nodeid: str, length: int = 10) -> str:
     """
     Generate a stable hash for pytest nodeid.
@@ -231,38 +274,9 @@ def _generate_reports(
         if not config or not hasattr(config, "a11y_session_dir"):
             return
 
-        session_dir: Path = config.a11y_session_dir
-
-        # Generate xdist-safe filenames; prefer request.node when available
-        worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
-        nodeid: str = (
-            request.node.nodeid
-            if request and getattr(request, "node", None)
-            else "unknown"
+        html_path, json_path, screenshot_dir, filename_suffix = _report_output_paths(
+            request, driver
         )
-        raw_name = (
-            request.node.nodeid.split("::")[-1].split("[", 1)[0]
-            if request and getattr(request, "node", None)
-            else "test"
-        )
-        raw_name = (
-            request.node.name if request and getattr(request, "node", None) else "test"
-        )
-        name: str = _safe_slug(raw_name)
-        page_url = getattr(driver, "current_url", "about:blank")
-        page_slug = _page_slug_from_url(page_url)
-        h: str = _nodeid_hash(nodeid)
-
-        base_parts = [name]
-        if "[" not in raw_name and page_slug:
-            base_parts.append(page_slug)
-        if worker_id != "master":
-            base_parts.append(worker_id)
-        base_parts.append(h)
-        base: str = "_".join(base_parts)
-        html_path: Path = session_dir / f"{base}.html"
-        json_path: Path = session_dir / f"{base}.json"
-        screenshot_dir: Path = session_dir / "violation_screenshots"
 
         # Capture screenshots (if any) and write reports
         if axe_results.get("violations"):
@@ -270,7 +284,7 @@ def _generate_reports(
                 driver=driver,
                 axe_results=axe_results,
                 output_dir=screenshot_dir,
-                filename_suffix=h,
+                filename_suffix=filename_suffix,
             )
 
         generate_a11y_report(

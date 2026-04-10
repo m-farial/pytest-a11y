@@ -13,6 +13,7 @@ from pytest_a11y.assertions import (
     _generate_reports,
     _nodeid_hash,
     _page_slug_from_url,
+    _report_output_paths,
     _safe_slug,
     _should_generate_reports,
     assert_no_axe_violations,
@@ -81,6 +82,40 @@ class TestHelpers:
     ) -> None:
         """Convert URLs into normalized page slugs for report filenames."""
         assert _page_slug_from_url(page_url) == expected
+
+    def test_report_output_paths_are_deterministic(self, tmp_path: Path) -> None:
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name="test_homepage_accessibility",
+                nodeid="tests/test_example.py::test_homepage_accessibility",
+            ),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert html_path.suffix == ".html"
+        assert json_path.suffix == ".json"
+        assert html_path.stem == json_path.stem
+        assert html_path.name.startswith("test_homepage_accessibility_example_home_")
+        assert screenshot_dir.name == "violation_screenshots"
+        assert suffix == html_path.stem.split("_")[-1]
+
+    def test_report_output_paths_raises_when_session_dir_missing(self) -> None:
+        request = SimpleNamespace(
+            config=SimpleNamespace(),
+            node=SimpleNamespace(
+                name="test_homepage_accessibility",
+                nodeid="tests/test_example.py::test_homepage_accessibility",
+            ),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        with pytest.raises(RuntimeError, match="Missing a11y_session_dir"):
+            _report_output_paths(request, driver)
 
 
 class TestShouldGenerateReports:
