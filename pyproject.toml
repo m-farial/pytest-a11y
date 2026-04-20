@@ -8,7 +8,7 @@ build-backend = "poetry.core.masonry.api"
 # ============================================================================
 [project]
 name = "pytest-a11y"
-version = "0.1.0"
+version = "1.0.0"
 description = "A pytest plugin for automated accessibility testing with axe-core, featuring HTML/JSON reports, violation screenshots, and baseline comparisons."
 authors = [{name = "Farial Mahbub", email = "mahbub.farial@gmail.com"}]
 license = {text = "MIT"}
@@ -52,7 +52,7 @@ a11y_axe = "pytest_a11y.axe.fixtures"
 # ============================================================================
 [tool.poetry]
 name = "pytest-a11y"
-version = "0.1.0"
+version = "1.0.0"
 description = "A pytest plugin for automated accessibility testing with axe-core, featuring HTML/JSON reports, violation screenshots, and baseline comparisons."
 authors = ["Farial Mahbub <mahbub.farial@gmail.com>"]
 license = "MIT"
@@ -73,7 +73,7 @@ pillow = "^12.1.0"
 ruff = "^0.15.7"
 mypy = "^1.20.0"
 pytest-xdist = "^3.6.0"
-poethepoet = "^0.42.1"
+poethepoet = ">=0.42.1,<0.45.0"
 pytest-cov = "^7.1.0"
 
 # ============================================================================

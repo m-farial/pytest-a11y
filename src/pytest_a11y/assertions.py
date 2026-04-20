@@ -47,12 +47,16 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import pytest
 
 from pytest_a11y.types import AxeResults, Results
 
 logger = logging.getLogger(__name__)
+
+REPORT_ARTIFACT_NAME_MAX_LEN = 120
+REPORT_ARTIFACT_FALLBACK_NAME_MAX_LEN = 30
 
 # ============================================================================
 # Report Generation (only when --a11y flag enabled)
@@ -87,13 +91,14 @@ def _should_generate_reports() -> bool:
     return False
 
 
-def _safe_slug(text: str, max_len: int = 10) -> str:
+def _safe_slug(text: str, max_len: int | None = 50) -> str:
     """
     Convert a string into a filesystem-friendly slug.
 
     Args:
         text: Input text (typically pytest test name)
-        max_len: Maximum length of the output slug
+        max_len: Optional maximum length of the output slug. If None,
+            the full slug is returned.
 
     Returns:
         Filesystem-safe slug string
@@ -104,8 +109,97 @@ def _safe_slug(text: str, max_len: int = 10) -> str:
             keep.append(ch)
         else:
             keep.append("_")
-    slug: str = "".join(keep)
+    slug: str = "".join(keep).strip("_")
+    if max_len is None:
+        return slug or "a11y"
     return slug[:max_len].strip("_") or "a11y"
+
+
+def _safe_filename_suffix(suffix: str, max_len: int = 50) -> str:
+    """
+    Normalize a filename suffix for use in screenshot filenames.
+
+    This prevents nested paths, relative-path sequences, and invalid
+    filesystem characters from appearing in screenshot filenames.
+    """
+    safe_chars: list[str] = []
+    prev_sep = False
+
+    for ch in suffix:
+        if ch.isalnum() or ch in ("-", "_"):
+            safe_chars.append(ch)
+            prev_sep = False
+        else:
+            if not prev_sep:
+                safe_chars.append("_")
+                prev_sep = True
+
+    safe = "".join(safe_chars).strip("_.")
+    if not safe:
+        return "suffix"
+
+    safe = safe[:max_len].strip("_.")
+    return safe or "suffix"
+
+
+def _report_output_paths(request: Any, driver: Any) -> tuple[Path, Path, Path, str]:
+    """
+    Compute deterministic output paths for HTML, JSON, screenshots, and suffix.
+
+    Args:
+        request: pytest request object containing node and config state.
+        driver: Selenium WebDriver instance with a current_url property.
+
+    Returns:
+        Tuple containing (html_path, json_path, screenshot_dir, filename_suffix).
+    """
+    config = request.config if request is not None else getattr(pytest, "config", None)
+    if not config or not hasattr(config, "a11y_session_dir"):
+        raise RuntimeError("Missing a11y_session_dir in pytest config")
+
+    session_dir: Path = Path(config.a11y_session_dir)
+    raw_worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    worker_id: str = (
+        _safe_filename_suffix(raw_worker_id, max_len=30)
+        if raw_worker_id != "master"
+        else "master"
+    )
+    if worker_id == "":
+        worker_id = "worker"
+    nodeid: str = (
+        request.node.nodeid if request and getattr(request, "node", None) else "unknown"
+    )
+    raw_name: str = (
+        request.node.name if request and getattr(request, "node", None) else "test"
+    )
+    name: str = _safe_slug(raw_name, max_len=50)
+    page_url = getattr(driver, "current_url", "about:blank")
+    page_slug = _page_slug_from_url(page_url, max_len=70)
+    suffix: str = _nodeid_hash(nodeid)
+
+    base_parts = [name]
+    if "[" not in raw_name and page_slug:
+        base_parts.append(page_slug)
+    if worker_id != "master":
+        base_parts.append(worker_id)
+    base_parts.append(suffix)
+
+    base: str = "_".join(base_parts)
+    if len(base) > REPORT_ARTIFACT_NAME_MAX_LEN:
+        fallback_name = _safe_slug(
+            raw_name, max_len=REPORT_ARTIFACT_FALLBACK_NAME_MAX_LEN
+        )
+        fallback_hash = _nodeid_hash(nodeid, length=10)
+        if worker_id != "master":
+            base = f"{fallback_name}_{worker_id}_{fallback_hash}"
+        else:
+            base = f"{fallback_name}_{fallback_hash}"
+
+    html_path: Path = session_dir / f"{base}.html"
+    json_path: Path = session_dir / f"{base}.json"
+    screenshot_dir: Path = session_dir / "violation_screenshots"
+
+    return html_path, json_path, screenshot_dir, suffix
 
 
 def _nodeid_hash(nodeid: str, length: int = 10) -> str:
@@ -124,6 +218,59 @@ def _nodeid_hash(nodeid: str, length: int = 10) -> str:
         nodeid.encode("utf-8"),
         digest_size=digest_size,
     ).hexdigest()[:length]
+
+
+def _page_slug_from_url(page_url: str, max_len: int | None = None) -> str:
+    """
+    Convert a page URL into a filesystem-safe slug.
+
+    Args:
+        page_url: URL of the analyzed page
+        max_len: Optional maximum length of the final slug.
+
+    Returns:
+        A slug derived from the hostname and path.
+    """
+    parsed = urlparse(page_url)
+    hostname = parsed.netloc.lower().split("@")[-1]
+    if hostname.startswith("www."):
+        hostname = hostname[4:]
+
+    path = parsed.path or "/"
+    if parsed.scheme == "file":
+        page_part = Path(path).stem or "file"
+        raw_slug = page_part
+        if max_len is None:
+            max_len = 100
+    else:
+        common_tlds = {
+            "com",
+            "net",
+            "org",
+            "io",
+            "app",
+            "dev",
+            "ai",
+            "info",
+            "tech",
+            "site",
+            "xyz",
+            "me",
+            "co",
+        }
+        host_parts = hostname.split(".") if hostname else []
+        if len(host_parts) > 1 and host_parts[-1] in common_tlds:
+            host_parts = host_parts[:-1]
+        hostname = "_".join(host_parts)
+
+        if path in ("/", ""):
+            page_part = "home"
+        else:
+            page_part = "_".join([segment for segment in path.split("/") if segment])
+
+        raw_slug = f"{hostname}_{page_part}" if hostname else page_part
+
+    return _safe_slug(raw_slug, max_len=max_len)
 
 
 def _generate_reports(
@@ -182,24 +329,9 @@ def _generate_reports(
         if not config or not hasattr(config, "a11y_session_dir"):
             return
 
-        session_dir: Path = config.a11y_session_dir
-
-        # Generate xdist-safe filenames; prefer request.node when available
-        worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
-        nodeid: str = (
-            request.node.nodeid
-            if request and getattr(request, "node", None)
-            else "unknown"
+        html_path, json_path, screenshot_dir, filename_suffix = _report_output_paths(
+            request, driver
         )
-        name: str = _safe_slug(
-            request.node.name if request and getattr(request, "node", None) else "test"
-        )
-        h: str = _nodeid_hash(nodeid)
-
-        base: str = f"{name}__{worker_id}__{h}"
-        html_path: Path = session_dir / f"{base}.html"
-        json_path: Path = session_dir / f"{base}.json"
-        screenshot_dir: Path = session_dir / "violation_screenshots"
 
         # Capture screenshots (if any) and write reports
         if axe_results.get("violations"):
@@ -207,6 +339,7 @@ def _generate_reports(
                 driver=driver,
                 axe_results=axe_results,
                 output_dir=screenshot_dir,
+                filename_suffix=filename_suffix,
             )
 
         generate_a11y_report(

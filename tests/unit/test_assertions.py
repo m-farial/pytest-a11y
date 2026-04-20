@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -12,6 +13,9 @@ import pytest_a11y.assertions as assertions_module
 from pytest_a11y.assertions import (
     _generate_reports,
     _nodeid_hash,
+    _page_slug_from_url,
+    _report_output_paths,
+    _safe_filename_suffix,
     _safe_slug,
     _should_generate_reports,
     assert_no_axe_violations,
@@ -66,6 +70,261 @@ class TestHelpers:
         result = _nodeid_hash("nodeid", length=1)
 
         assert len(result) == 1
+
+    @pytest.mark.parametrize(
+        ("page_url", "expected"),
+        [
+            ("https://www.saucedemo.com/inventory", "saucedemo_inventory"),
+            ("https://example.com/", "example_home"),
+            ("https://www.example.co.uk/blog", "example_co_uk_blog"),
+            ("file:///tmp/test-page.html", "test-page"),
+        ],
+    )
+    def test_page_slug_from_url_normalizes_common_hosts_and_paths(
+        self, page_url: str, expected: str
+    ) -> None:
+        """Convert URLs into normalized page slugs for report filenames."""
+        assert _page_slug_from_url(page_url) == expected
+
+    def test_page_slug_from_url_truncates_long_file_paths(self) -> None:
+        """Limit file:// page slugs to a reasonable maximum length."""
+        long_name = "a" * 200
+        url = f"file:///tmp/{long_name}.html"
+
+        slug = _page_slug_from_url(url)
+
+        assert len(slug) <= 100
+        assert slug == long_name[:100]
+
+    def test_safe_slug_returns_full_slug_when_max_len_is_none(self) -> None:
+        """Return the full slug when no maximum length is requested."""
+        assert _safe_slug("a/b:c", max_len=None) == "a_b_c"
+
+    def test_page_slug_from_url_file_url_respects_explicit_max_len(self) -> None:
+        """File URL slugging should respect an explicit max_len argument."""
+        assert _page_slug_from_url("file:///tmp/test-page.html", max_len=4) == "test"
+
+    def test_safe_filename_suffix_returns_suffix_for_invalid_input(self) -> None:
+        """Invalid suffix input should normalize to a safe filename suffix."""
+        assert _safe_filename_suffix("...///") == "suffix"
+
+    def test_safe_filename_suffix_sanitizes_valid_input(self) -> None:
+        """Valid suffix input should be sanitized and returned."""
+        assert _safe_filename_suffix("danger/..suffix") == "danger_suffix"
+
+    def test_generate_reports_with_no_axe_results_does_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        """Report generation should exit early when no axe results are provided."""
+        request = SimpleNamespace(
+            config=SimpleNamespace(
+                getoption=lambda name: True, a11y_session_dir=tmp_path
+            ),
+            node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        _generate_reports(None, driver, request=request)
+
+    def test_generate_reports_skips_when_a11y_flag_disabled(
+        self, tmp_path: Path
+    ) -> None:
+        """Report generation should skip when the --a11y flag is not enabled."""
+        request = SimpleNamespace(
+            config=SimpleNamespace(
+                getoption=lambda name: False, a11y_session_dir=tmp_path
+            ),
+            node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        _generate_reports({"violations": []}, driver, request=request)
+
+    def test_generate_reports_calls_reporting_modules_and_screenshots(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Generate reports and capture screenshots when --a11y is enabled."""
+        mock_capture = MagicMock()
+        mock_generate = MagicMock()
+        mock_write = MagicMock()
+
+        html_mod = ModuleType("pytest_a11y._internal.reporting.html_report")
+        html_mod.generate_a11y_report = mock_generate
+        json_mod = ModuleType("pytest_a11y._internal.reporting.json_report")
+        json_mod.write_a11y_json_report = mock_write
+        screenshot_mod = ModuleType("pytest_a11y._internal.screenshots")
+        screenshot_mod.capture_violation_screenshots = mock_capture
+
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal.reporting.html_report", html_mod
+        )
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal.reporting.json_report", json_mod
+        )
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal.screenshots", screenshot_mod
+        )
+        monkeypatch.setitem(
+            sys.modules,
+            "pytest_a11y._internal.reporting",
+            ModuleType("pytest_a11y._internal.reporting"),
+        )
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal", ModuleType("pytest_a11y._internal")
+        )
+
+        request = SimpleNamespace(
+            config=SimpleNamespace(
+                getoption=lambda name: True, a11y_session_dir=tmp_path
+            ),
+            node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+        axe_results = {
+            "violations": [
+                {
+                    "id": "color-contrast",
+                    "impact": "serious",
+                    "nodes": [{"target": ["#main"]}],
+                }
+            ]
+        }
+
+        _generate_reports(axe_results, driver, request=request)
+
+        mock_capture.assert_called_once()
+        mock_generate.assert_called_once()
+        mock_write.assert_called_once()
+
+    def test_report_output_paths_are_deterministic(self, tmp_path: Path) -> None:
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name="test_homepage_accessibility",
+                nodeid="tests/test_example.py::test_homepage_accessibility",
+            ),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert html_path.suffix == ".html"
+        assert json_path.suffix == ".json"
+        assert html_path.stem == json_path.stem
+        assert html_path.name.startswith("test_homepage_accessibility_example_home_")
+        assert screenshot_dir.name == "violation_screenshots"
+        assert suffix == html_path.stem.split("_")[-1]
+
+    def test_report_output_paths_handles_oversize_basename(
+        self, tmp_path: Path
+    ) -> None:
+        raw_name = "test_long_parameterized_name_" + "x" * 300
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name=raw_name, nodeid=f"tests/test_example.py::{raw_name}"
+            ),
+        )
+        driver = SimpleNamespace(
+            current_url="https://example.com/" + "path/" + "y" * 200
+        )
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert len(html_path.stem) <= 120
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert html_path.stem.endswith(suffix)
+        assert screenshot_dir.name == "violation_screenshots"
+
+    def test_report_output_paths_handles_oversize_basename_with_worker_id(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw0")
+        raw_name = "test_long_parameterized_name_" + "x" * 300
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name=raw_name, nodeid=f"tests/test_example.py::{raw_name}"
+            ),
+        )
+        driver = SimpleNamespace(
+            current_url="https://example.com/" + "path/" + "y" * 200
+        )
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert html_path.stem.startswith("test_long_parameterized_name_")
+        assert "gw0" in html_path.stem
+        assert len(html_path.stem) <= 120
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert html_path.stem.endswith(suffix)
+        assert screenshot_dir.name == "violation_screenshots"
+
+    def test_report_output_paths_sanitizes_worker_id(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw0/../evil")
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(name="test", nodeid="tests/test_example.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, _ = _report_output_paths(request, driver)
+
+        assert "gw0" in html_path.stem
+        assert "/" not in html_path.stem
+        assert ".." not in html_path.stem
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert screenshot_dir.name == "violation_screenshots"
+
+    def test_report_output_paths_uses_worker_fallback_when_id_sanitizes_empty(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            assertions_module,
+            "_safe_filename_suffix",
+            lambda value, max_len=30: "",
+        )
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw0/../evil")
+
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(name="test", nodeid="tests/test_example.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert "worker" in html_path.stem
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert screenshot_dir.name == "violation_screenshots"
+        assert html_path.stem.endswith(suffix)
+
+    def test_report_output_paths_raises_when_session_dir_missing(self) -> None:
+        request = SimpleNamespace(
+            config=SimpleNamespace(),
+            node=SimpleNamespace(
+                name="test_homepage_accessibility",
+                nodeid="tests/test_example.py::test_homepage_accessibility",
+            ),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        with pytest.raises(RuntimeError, match="Missing a11y_session_dir"):
+            _report_output_paths(request, driver)
 
 
 class TestShouldGenerateReports:
@@ -362,7 +621,7 @@ class TestGenerateReports:
         assert html_path.parent == session_dir
         assert json_path.parent == session_dir
         assert screenshot_dir == session_dir / "violation_screenshots"
-        assert "__gw1__" in html_path.name
+        assert "gw1_" in html_path.name
 
     def test_generate_reports_skips_screenshots_when_no_violations(
         self,
