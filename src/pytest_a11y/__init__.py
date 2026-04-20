@@ -108,7 +108,7 @@ __all__ = [
     "axe",
 ]
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "Farial Mahbub"
 __license__ = "MIT"
 __homepage__ = "https://github.com/m-farial/pytest-a11y"

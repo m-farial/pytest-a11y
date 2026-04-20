@@ -25,6 +25,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pytest_a11y._internal.comparison.baseline_manager import BaselineManager
+from pytest_a11y.assertions import _report_output_paths
 from pytest_a11y.types import AxeRunnerProtocol
 
 logger = logging.getLogger(__name__)
@@ -163,26 +164,6 @@ def pages() -> Pages:
 # ============================================================================
 # Utility Functions
 # ============================================================================
-
-
-def _latest_file(dir_path: Path, pattern: str) -> Path:
-    """
-    Return the most recently modified file matching a glob pattern.
-
-    Args:
-        dir_path: Directory to search
-        pattern: Glob pattern (e.g., "*.html")
-
-    Returns:
-        Path to the newest file
-
-    Raises:
-        FileNotFoundError: If no files match the pattern
-    """
-    matches = list(dir_path.glob(pattern))
-    if not matches:
-        raise FileNotFoundError(f"No files matched {pattern} in {dir_path}")
-    return max(matches, key=lambda p: p.stat().st_mtime)
 
 
 def _normalize_screenshots_dir(result: A11yRunResult) -> Path:
@@ -400,9 +381,9 @@ def run_a11y(
         # Execute axe and capture raw results
         axe_results = axe.run()
 
+        html_path, json_path, screenshot_dir, _ = _report_output_paths(request, driver)
+
         # Trigger report generation via the plugin helper (best-effort).
-        # We still write deterministic files below to guarantee artifacts exist
-        # and reflect the current `axe_results` for the test comparison.
         try:
             from pytest_a11y.assertions import _generate_reports
 
@@ -413,41 +394,7 @@ def run_a11y(
             )
             raise
 
-        # Always write deterministic artifact files for the test run so the
-        # test can rely on exact, current files rather than racey "latest" files.
-        session_dir: Path = request.config.a11y_session_dir  # type: ignore[attr-defined]
-        screenshot_dir = session_dir / "violation_screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
-
-        # Deterministic filenames (include page key to aid debugging)
-        safe_name = re.sub(
-            r"[^A-Za-z0-9_.-]+", "_", f"{request.node.name}__{page_key}"
-        ).strip("_")
-        html_path = session_dir / f"{safe_name}.html"
-        json_path = session_dir / f"{safe_name}.json"
-
-        # Directly call reporting writers (raise on error so tests fail noisily)
-        from pytest_a11y._internal.reporting.html_report import generate_a11y_report
-        from pytest_a11y._internal.reporting.json_report import write_a11y_json_report
-        from pytest_a11y._internal.screenshots import capture_violation_screenshots
-
-        # Capture violation screenshots when present
-        if axe_results.get("violations"):
-            capture_violation_screenshots(
-                driver=driver, axe_results=axe_results, output_dir=screenshot_dir
-            )
-
-        generate_a11y_report(
-            axe_results=axe_results,
-            page_url=url,
-            output_path=html_path,
-            screenshot_dir=screenshot_dir,
-        )
-        write_a11y_json_report(
-            axe_results=axe_results,
-            page_url=url,
-            output_path=json_path,
-        )
 
         return A11yArtifacts(
             axe=axe_results,
