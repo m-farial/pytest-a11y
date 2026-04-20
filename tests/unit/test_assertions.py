@@ -117,7 +117,9 @@ class TestHelpers:
     ) -> None:
         """Report generation should exit early when no axe results are provided."""
         request = SimpleNamespace(
-            config=SimpleNamespace(getoption=lambda name: True, a11y_session_dir=tmp_path),
+            config=SimpleNamespace(
+                getoption=lambda name: True, a11y_session_dir=tmp_path
+            ),
             node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
         )
         driver = SimpleNamespace(current_url="https://example.com/")
@@ -129,7 +131,9 @@ class TestHelpers:
     ) -> None:
         """Report generation should skip when the --a11y flag is not enabled."""
         request = SimpleNamespace(
-            config=SimpleNamespace(getoption=lambda name: False, a11y_session_dir=tmp_path),
+            config=SimpleNamespace(
+                getoption=lambda name: False, a11y_session_dir=tmp_path
+            ),
             node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
         )
         driver = SimpleNamespace(current_url="https://example.com/")
@@ -151,16 +155,28 @@ class TestHelpers:
         screenshot_mod = ModuleType("pytest_a11y._internal.screenshots")
         screenshot_mod.capture_violation_screenshots = mock_capture
 
-        monkeypatch.setitem(sys.modules, "pytest_a11y._internal.reporting.html_report", html_mod)
-        monkeypatch.setitem(sys.modules, "pytest_a11y._internal.reporting.json_report", json_mod)
-        monkeypatch.setitem(sys.modules, "pytest_a11y._internal.screenshots", screenshot_mod)
         monkeypatch.setitem(
-            sys.modules, "pytest_a11y._internal.reporting", ModuleType("pytest_a11y._internal.reporting")
+            sys.modules, "pytest_a11y._internal.reporting.html_report", html_mod
         )
-        monkeypatch.setitem(sys.modules, "pytest_a11y._internal", ModuleType("pytest_a11y._internal"))
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal.reporting.json_report", json_mod
+        )
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal.screenshots", screenshot_mod
+        )
+        monkeypatch.setitem(
+            sys.modules,
+            "pytest_a11y._internal.reporting",
+            ModuleType("pytest_a11y._internal.reporting"),
+        )
+        monkeypatch.setitem(
+            sys.modules, "pytest_a11y._internal", ModuleType("pytest_a11y._internal")
+        )
 
         request = SimpleNamespace(
-            config=SimpleNamespace(getoption=lambda name: True, a11y_session_dir=tmp_path),
+            config=SimpleNamespace(
+                getoption=lambda name: True, a11y_session_dir=tmp_path
+            ),
             node=SimpleNamespace(name="test", nodeid="tests/test.py::test"),
         )
         driver = SimpleNamespace(current_url="https://example.com/")
@@ -251,6 +267,51 @@ class TestHelpers:
         assert html_path.stem == json_path.stem
         assert html_path.stem.endswith(suffix)
         assert screenshot_dir.name == "violation_screenshots"
+
+    def test_report_output_paths_sanitizes_worker_id(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw0/../evil")
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(name="test", nodeid="tests/test_example.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, _ = _report_output_paths(request, driver)
+
+        assert "gw0" in html_path.stem
+        assert "/" not in html_path.stem
+        assert ".." not in html_path.stem
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert screenshot_dir.name == "violation_screenshots"
+
+    def test_report_output_paths_uses_worker_fallback_when_id_sanitizes_empty(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            assertions_module,
+            "_safe_filename_suffix",
+            lambda value, max_len=30: "",
+        )
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw0/../evil")
+
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(name="test", nodeid="tests/test_example.py::test"),
+        )
+        driver = SimpleNamespace(current_url="https://example.com/")
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert "worker" in html_path.stem
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert screenshot_dir.name == "violation_screenshots"
+        assert html_path.stem.endswith(suffix)
 
     def test_report_output_paths_raises_when_session_dir_missing(self) -> None:
         request = SimpleNamespace(

@@ -158,7 +158,14 @@ def _report_output_paths(request: Any, driver: Any) -> tuple[Path, Path, Path, s
         raise RuntimeError("Missing a11y_session_dir in pytest config")
 
     session_dir: Path = Path(config.a11y_session_dir)
-    worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    raw_worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    worker_id: str = (
+        _safe_filename_suffix(raw_worker_id, max_len=30)
+        if raw_worker_id != "master"
+        else "master"
+    )
+    if worker_id == "":
+        worker_id = "worker"
     nodeid: str = (
         request.node.nodeid if request and getattr(request, "node", None) else "unknown"
     )
