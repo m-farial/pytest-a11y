@@ -14,6 +14,7 @@ from pathlib import Path
 
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from pytest_a11y.assertions import _safe_filename_suffix
 from pytest_a11y.types import AxeNode, AxeResults, AxeViolationRaw
 
 logger = logging.getLogger(__name__)
@@ -400,7 +401,8 @@ def capture_violation_screenshots(
         )
 
         # Capture screenshot
-        suffix = f"_{filename_suffix}" if filename_suffix else ""
+        safe_suffix = _safe_filename_suffix(filename_suffix) if filename_suffix else ""
+        suffix = f"_{safe_suffix}" if safe_suffix else ""
         screenshot_path = (
             output_dir / f"{violation_impact}_{violation_id}_{v_index}{suffix}.png"
         )

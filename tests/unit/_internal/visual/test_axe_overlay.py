@@ -236,6 +236,42 @@ class TestCaptureViolationScreenshots:
         mock_driver.save_screenshot.assert_called_once_with(expected_path)
         mock_cleanup.assert_called_once_with(mock_driver)
 
+    @patch.object(overlay_module, "_cleanup_violation_marks")
+    @patch.object(overlay_module, "_mark_selector_on_page")
+    def test_capture_appends_safe_filename_suffix(
+        self,
+        mock_mark: MagicMock,
+        mock_cleanup: MagicMock,
+        tmp_path: Path,
+        mock_driver: MagicMock,
+    ) -> None:
+        """Append a sanitized filename suffix to screenshot filenames."""
+        mock_mark.return_value = True
+
+        axe_results = {
+            "violations": [
+                {
+                    "id": "color-contrast",
+                    "impact": "serious",
+                    "nodes": [{"target": ["#main"]}],
+                }
+            ]
+        }
+
+        result = overlay_module.capture_violation_screenshots(
+            mock_driver,
+            axe_results,
+            tmp_path,
+            filename_suffix="danger/..suffix",
+        )
+
+        screenshot_path = result["color-contrast"]
+        assert screenshot_path.endswith("_danger_suffix.png")
+        assert ".." not in Path(screenshot_path).name
+        assert "/" not in Path(screenshot_path).name
+        mock_driver.save_screenshot.assert_called_once_with(screenshot_path)
+        mock_cleanup.assert_called_once_with(mock_driver)
+
     @patch.object(overlay_module, "_add_page_level_banner")
     @patch.object(overlay_module, "_cleanup_violation_marks")
     @patch.object(overlay_module, "_mark_selector_on_page")

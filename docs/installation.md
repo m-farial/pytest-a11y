@@ -52,7 +52,7 @@ In your `pyproject.toml`:
 ```toml
 [tool.poetry.dependencies]
 python = "^3.10"
-pytest-a11y = "^0.1.0"
+pytest-a11y = "^1.0.0"
 ```
 
 Then:

@@ -8,7 +8,7 @@ https://semver.org/
 
 ---
 
-# [1.0.0] - 2026-04-08
+## [1.0.0] - 2026-04-08
 
 ### Added
 
@@ -27,6 +27,6 @@ https://semver.org/
 
 ---
 
-# [0.1.0] - Initial Development
+## [0.1.0] - Initial Development
 
 Initial internal development version.

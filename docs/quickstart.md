@@ -90,13 +90,13 @@ pytest tests/test_a11y.py --a11y -v
 
 A passing test looks like this:
 
-```
+```text
 tests/test_a11y.py::test_homepage_accessibility PASSED
 ```
 
 When run with `--a11y`, reports are written to:
 
-```
+```text
 .a11y_reports/run_YYYYMMDD_HHMMSS/
 ├── violation_screenshots/
 ├── test_homepage_accessibility_saucedemo_home_abc123d.html

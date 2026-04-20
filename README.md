@@ -99,7 +99,7 @@ poetry add pytest-a11y
 
 ```toml
 [tool.poetry.dependencies]
-pytest-a11y = "^0.1.0"
+pytest-a11y = "^1.0.0"
 ```
 
 ### 2. Set Up the Driver Fixture
@@ -202,7 +202,7 @@ Report filenames now include a normalized page slug derived from the current URL
 
 ## Examples
 
-The full set of runnable examples is consolidated in [docs/quickstart.md](docs/quickstart.md).
+The full set of runnable examples is consolidated in [docs/usage.md](docs/usage.md).
 
 This includes:
 
