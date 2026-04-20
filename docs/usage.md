@@ -229,9 +229,13 @@ After running with `--a11y`, reports are generated to `.a11y_reports/run_<timest
 
 - `test_<name>_<page_slug>_<hash>.html`
 - `test_<name>_<page_slug>_<hash>.json`
+- `test_<name>_<page_slug>_<worker_id>_<hash>.html` (when running under `pytest-xdist`, for example `gw0`)
+- `test_<name>_<page_slug>_<worker_id>_<hash>.json` (when running under `pytest-xdist`)
+- `test_<name>_<hash>.html` / `test_<name>_<worker_id>_<hash>.html` (possible for parameterized test names such as `test_page[...]`, where the page slug segment may be omitted)
+- `test_<name>_<hash>.json` / `test_<name>_<worker_id>_<hash>.json` (possible for parameterized test names such as `test_page[...]`)
 - `violation_screenshots/`
 
-Report filenames now include a normalized page slug derived from the current URL, such as `saucedemo_home`, while a stable hash suffix keeps report names unique.
+Report filenames use a normalized page slug derived from the current URL when available, such as `saucedemo_home`, and always include a stable hash suffix to keep names unique. When tests run in parallel with `pytest-xdist`, the worker id is inserted before the hash (for example, `test_login_saucedemo_home_gw0_ab12cd34.html`). For some parameterized pytest item names, the page slug segment may be omitted, so look for both slugged and non-slugged forms when locating artifacts.
 
 ---
 
