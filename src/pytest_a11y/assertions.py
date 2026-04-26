@@ -56,7 +56,9 @@ from pytest_a11y.types import AxeResults, Results
 logger = logging.getLogger(__name__)
 
 REPORT_ARTIFACT_NAME_MAX_LEN = 120
-REPORT_ARTIFACT_FALLBACK_NAME_MAX_LEN = 30
+REPORT_ARTIFACT_FALLBACK_NAME_MAX_LEN = 60
+SLUG_COMPONENT_MAX_LEN: int = 50
+SLUG_PAGE_MAX_LEN: int = 75
 
 # ============================================================================
 # Report Generation (only when --a11y flag enabled)
@@ -91,7 +93,7 @@ def _should_generate_reports() -> bool:
     return False
 
 
-def _safe_slug(text: str, max_len: int | None = 50) -> str:
+def _safe_slug(text: str, max_len: int | None = SLUG_COMPONENT_MAX_LEN) -> str:
     """
     Convert a string into a filesystem-friendly slug.
 
@@ -115,7 +117,7 @@ def _safe_slug(text: str, max_len: int | None = 50) -> str:
     return slug[:max_len].strip("_") or "a11y"
 
 
-def _safe_filename_suffix(suffix: str, max_len: int = 50) -> str:
+def _safe_filename_suffix(suffix: str, max_len: int = SLUG_COMPONENT_MAX_LEN) -> str:
     """
     Normalize a filename suffix for use in screenshot filenames.
 
@@ -160,7 +162,7 @@ def _report_output_paths(request: Any, driver: Any) -> tuple[Path, Path, Path, s
     session_dir: Path = Path(config.a11y_session_dir)
     raw_worker_id: str = os.environ.get("PYTEST_XDIST_WORKER", "master")
     worker_id: str = (
-        _safe_filename_suffix(raw_worker_id, max_len=30)
+        _safe_filename_suffix(raw_worker_id, max_len=SLUG_COMPONENT_MAX_LEN)
         if raw_worker_id != "master"
         else "master"
     )
@@ -172,9 +174,9 @@ def _report_output_paths(request: Any, driver: Any) -> tuple[Path, Path, Path, s
     raw_name: str = (
         request.node.name if request and getattr(request, "node", None) else "test"
     )
-    name: str = _safe_slug(raw_name, max_len=50)
+    name: str = _safe_slug(raw_name, max_len=SLUG_COMPONENT_MAX_LEN)
     page_url = getattr(driver, "current_url", "about:blank")
-    page_slug = _page_slug_from_url(page_url, max_len=70)
+    page_slug = _page_slug_from_url(page_url, max_len=SLUG_PAGE_MAX_LEN)
     suffix: str = _nodeid_hash(nodeid)
 
     base_parts = [name]
@@ -241,7 +243,7 @@ def _page_slug_from_url(page_url: str, max_len: int | None = None) -> str:
         page_part = Path(path).stem or "file"
         raw_slug = page_part
         if max_len is None:
-            max_len = 100
+            max_len = SLUG_PAGE_MAX_LEN
     else:
         common_tlds = {
             "com",

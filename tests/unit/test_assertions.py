@@ -11,6 +11,8 @@ import pytest
 
 import pytest_a11y.assertions as assertions_module
 from pytest_a11y.assertions import (
+    REPORT_ARTIFACT_NAME_MAX_LEN,
+    SLUG_PAGE_MAX_LEN,
     _generate_reports,
     _nodeid_hash,
     _page_slug_from_url,
@@ -88,13 +90,14 @@ class TestHelpers:
 
     def test_page_slug_from_url_truncates_long_file_paths(self) -> None:
         """Limit file:// page slugs to a reasonable maximum length."""
+
         long_name = "a" * 200
         url = f"file:///tmp/{long_name}.html"
 
         slug = _page_slug_from_url(url)
 
-        assert len(slug) <= 100
-        assert slug == long_name[:100]
+        assert len(slug) <= SLUG_PAGE_MAX_LEN
+        assert slug == long_name[:SLUG_PAGE_MAX_LEN]
 
     def test_safe_slug_returns_full_slug_when_max_len_is_none(self) -> None:
         """Return the full slug when no maximum length is requested."""
@@ -235,7 +238,7 @@ class TestHelpers:
             request, driver
         )
 
-        assert len(html_path.stem) <= 120
+        assert len(html_path.stem) <= REPORT_ARTIFACT_NAME_MAX_LEN
         assert html_path.suffix == ".html"
         assert html_path.stem == json_path.stem
         assert html_path.stem.endswith(suffix)
@@ -262,7 +265,7 @@ class TestHelpers:
 
         assert html_path.stem.startswith("test_long_parameterized_name_")
         assert "gw0" in html_path.stem
-        assert len(html_path.stem) <= 120
+        assert len(html_path.stem) <= REPORT_ARTIFACT_NAME_MAX_LEN
         assert html_path.suffix == ".html"
         assert html_path.stem == json_path.stem
         assert html_path.stem.endswith(suffix)
