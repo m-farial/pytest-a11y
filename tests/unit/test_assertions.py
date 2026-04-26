@@ -271,6 +271,33 @@ class TestHelpers:
         assert html_path.stem.endswith(suffix)
         assert screenshot_dir.name == "violation_screenshots"
 
+    def test_report_output_paths_uses_fallback_name_for_oversize_base_with_worker_id(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw" + "x" * 100)
+        raw_name = "test_long_parameterized_name_" + "x" * 300
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name=raw_name, nodeid=f"tests/test_example.py::{raw_name}"
+            ),
+        )
+        driver = SimpleNamespace(
+            current_url="https://example.com/" + "path/" + "y" * 200
+        )
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert len(html_path.stem) <= REPORT_ARTIFACT_NAME_MAX_LEN
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert html_path.stem.endswith(suffix)
+        assert screenshot_dir.name == "violation_screenshots"
+        assert "example_com" not in html_path.stem
+        assert "gw" in html_path.stem
+
     def test_report_output_paths_sanitizes_worker_id(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -315,6 +342,32 @@ class TestHelpers:
         assert html_path.stem == json_path.stem
         assert screenshot_dir.name == "violation_screenshots"
         assert html_path.stem.endswith(suffix)
+
+    def test_report_output_paths_uses_master_fallback_when_base_too_long(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(assertions_module, "REPORT_ARTIFACT_NAME_MAX_LEN", 10)
+        raw_name = "test_long_parameterized_name"
+        request = SimpleNamespace(
+            config=SimpleNamespace(a11y_session_dir=tmp_path),
+            node=SimpleNamespace(
+                name=raw_name, nodeid=f"tests/test_example.py::{raw_name}"
+            ),
+        )
+        driver = SimpleNamespace(
+            current_url="https://example.com/" + "path/" + "y" * 200
+        )
+
+        html_path, json_path, screenshot_dir, suffix = _report_output_paths(
+            request, driver
+        )
+
+        assert html_path.suffix == ".html"
+        assert html_path.stem == json_path.stem
+        assert html_path.stem.endswith(suffix)
+        assert screenshot_dir.name == "violation_screenshots"
+        assert "example_com" not in html_path.stem
+        assert "worker" not in html_path.stem
 
     def test_report_output_paths_raises_when_session_dir_missing(self) -> None:
         request = SimpleNamespace(

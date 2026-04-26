@@ -55,7 +55,7 @@ from pytest_a11y.types import AxeResults, Results
 
 logger = logging.getLogger(__name__)
 
-REPORT_ARTIFACT_NAME_MAX_LEN = 120
+REPORT_ARTIFACT_NAME_MAX_LEN = 150
 REPORT_ARTIFACT_FALLBACK_NAME_MAX_LEN = 60
 SLUG_COMPONENT_MAX_LEN: int = 50
 SLUG_PAGE_MAX_LEN: int = 75
