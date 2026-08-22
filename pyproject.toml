@@ -70,7 +70,7 @@ axe-selenium-python = "^2.1.6"
 pillow = "^12.2.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.15.7"
+ruff = ">=0.15.7,<0.17.0"
 mypy = ">=1.20,<3.0"
 pytest-xdist = "^3.6.0"
 poethepoet = ">=0.45,<0.47"
